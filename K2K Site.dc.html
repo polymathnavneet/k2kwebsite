@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="_ds/modernist-e2fdd9ef-0584-472b-a0b8-8c52a3d9787b/styles.css">
+<script src="_ds/modernist-e2fdd9ef-0584-472b-a0b8-8c52a3d9787b/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"Archivo",system-ui,sans-serif;background:#201e1d}
+*{box-sizing:border-box}
+a{color:var(--k-accent-text,#ae1800)}
+a:hover{color:var(--k-accent,#ec3013)}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:24px;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--k-hair)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:22px;background:var(--k-accent);margin-top:-10px;border:0}
+input[type=range]::-moz-range-track{height:2px;background:var(--k-hair)}
+input[type=range]::-moz-range-thumb{width:12px;height:22px;background:var(--k-accent);border:0;border-radius:0}
+.k-rise{opacity:0;transform:translateY(22px);transition:opacity .34s cubic-bezier(.2,.7,.3,1),transform .34s cubic-bezier(.2,.7,.3,1)}
+.k-rise.k-in{opacity:1;transform:none}
+.k-tab:hover{color:var(--k-accent-text)!important}
+.k-row{transition:background .12s,padding-left .12s}
+.k-row:hover{background:var(--k-tint);padding-left:6px}
+.k-btn{transition:background .12s,transform .08s}
+.k-btn:hover{background:var(--k-accent-600)}
+.k-btn:active{transform:translateY(1px)}
+.k-chip{transition:background .12s,color .12s,border-color .12s}
+::selection{background:#ec3013;color:#f3f2f2}
+:focus-visible{outline:2px solid #ec3013;outline-offset:2px}
+</style></helmet>
+
+<div style="{{ themeVars }}">
+<div style="background:var(--k-bg);color:var(--k-ink);min-height:100vh;transition:background .2s,color .2s">
+
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0 22px;padding:8px 18px;background:var(--k-ink);color:var(--k-bg);font:500 10px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase">
+    <span style="display:flex;align-items:center;gap:7px;color:var(--k-accent)"><span style="width:7px;height:7px;background:var(--k-accent);display:inline-block"></span>{{ trackerState }}</span>
+    <span>{{ trackerPos }}</span>
+    <span style="opacity:.6">{{ trackerLeg }}</span>
+    <span style="opacity:.6">{{ trackerWx }}</span>
+    <span style="margin-left:auto;opacity:.6;font-variant-numeric:tabular-nums">Last ping {{ pingAgo }}</span>
+  </div>
+
+  <div style="position:sticky;top:0;z-index:20;background:var(--k-bg);border-bottom:2px solid var(--k-rule)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 18px">
+      <a href="#" onClick="{{ goHome }}" style="display:flex;align-items:baseline;gap:12px;text-decoration:none;color:var(--k-ink);padding:14px 0;flex:none">
+        <span style="font-family:'Archivo';font-weight:600;font-stretch:62%;font-size:30px;line-height:.78;letter-spacing:-.03em">K2K</span>
+        <span style="width:2px;height:18px;background:var(--k-accent)"></span>
+      </a>
+      <div style="display:flex;align-items:center;gap:0;overflow-x:auto;flex:1;justify-content:flex-end">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="8">
+          <a class="k-tab" href="#" onClick="{{ t.go }}" style="{{ t.style }}">{{ t.label }}</a>
+        </sc-for>
+        <button class="k-chip" onClick="{{ toggleTheme }}" style="margin-left:12px;flex:none;background:transparent;border:2px solid var(--k-rule);color:var(--k-ink);font:600 9.5px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;padding:9px 11px;cursor:pointer">{{ themeLabel }}</button>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-muted);margin-bottom:24px">08°04′N → 34°22′N · A documentary in 200 days</div>
+      <h1 style="{{ heroStyle }}">Kanya-<br>kumari<br><span style="color:var(--k-faint)">to</span>&nbsp;Kashmir</h1>
+      <p style="margin:30px 0 0;max-width:52ch;font-size:17px;line-height:1.5;color:var(--k-muted);text-wrap:pretty">One walker, four thousand kilometres, the length of India on foot. Leaving the southernmost point on 1 December and arriving, if the body holds, two hundred days later in the north.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:28px">
+        <a class="k-btn" href="#" onClick="{{ goSupport }}" style="background:var(--k-accent);color:#f3f2f2;text-decoration:none;font:600 11px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;padding:16px 20px">Support the walk</a>
+        <a href="#" onClick="{{ goRoute }}" style="border:2px solid var(--k-rule);color:var(--k-ink);text-decoration:none;font:600 11px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;padding:14px 20px">See the route</a>
+      </div>
+    </div>
+
+    <div style="{{ counterGrid }}">
+      <div style="padding:26px 18px">
+        <div style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-muted);margin-bottom:12px">Days walked</div>
+        <div style="{{ bigNumStyle }}">{{ rollDays }}</div>
+        <div style="font:400 11px/1.3 'Archivo';color:var(--k-faint);margin-top:10px">of 200</div>
+      </div>
+      <div style="padding:26px 18px">
+        <div style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-muted);margin-bottom:12px">Kilometres remaining</div>
+        <div style="{{ bigNumStyle }}">{{ rollKm }}</div>
+        <div style="font:400 11px/1.3 'Archivo';color:var(--k-faint);margin-top:10px">of 4,000</div>
+      </div>
+      <div style="padding:26px 18px;display:flex;flex-direction:column;justify-content:space-between">
+        <div>
+          <div style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-accent-text);margin-bottom:12px">{{ statusLabel }}</div>
+          <div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:44px;line-height:.9;letter-spacing:-.03em;font-variant-numeric:tabular-nums">{{ statusValue }}</div>
+          <div style="font:400 12px/1.45 'Archivo';color:var(--k-muted);margin-top:12px">{{ statusNote }}</div>
+        </div>
+        <div style="height:2px;background:var(--k-accent);margin-top:20px"></div>
+      </div>
+    </div>
+
+    <div style="{{ photoStrip }}">
+      <div style="{{ photoTallStyle }}"></div>
+      <div style="{{ photoStyle }}"></div>
+      <div style="{{ photoStyle }}"></div>
+    </div>
+
+    <div class="k-rise" style="{{ padStyle }}">
+      <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:26px">
+        <span style="font:600 11px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-accent)">↓ 01</span>
+        <span style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:26px;line-height:1;letter-spacing:-.02em;text-transform:uppercase">The walk, in five facts</span>
+      </div>
+      <div style="{{ grid5 }}">
+        <div style="padding:20px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">Distance</div><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:46px;line-height:.85;font-variant-numeric:tabular-nums">4,000 km</div></div>
+        <div style="padding:20px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">Duration</div><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:46px;line-height:.85;font-variant-numeric:tabular-nums">200 days</div></div>
+        <div style="padding:20px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">States</div><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:46px;line-height:.85;font-variant-numeric:tabular-nums">14</div></div>
+        <div style="padding:20px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">Total ascent</div><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:46px;line-height:.85;font-variant-numeric:tabular-nums">11,400 m</div></div>
+        <div style="padding:20px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">Support crew</div><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:46px;line-height:.85">None</div></div>
+      </div>
+    </div>
+
+    <div class="k-rise" style="{{ padStyle }}">
+      <div style="border-top:2px solid var(--k-rule);padding-top:26px">
+        <div style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-muted);margin-bottom:20px">Latest dispatch</div>
+        <div style="{{ grid2 }}">
+          <div>
+            <div style="font:500 10px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-accent-text);margin-bottom:14px">Day 041 · Chittoor, Andhra Pradesh</div>
+            <div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:58px;line-height:.84;letter-spacing:-.04em;text-transform:uppercase">The ground<br>tilts up</div>
+            <p style="margin:20px 0 0;font-size:16px;line-height:1.6;color:var(--k-muted);max-width:48ch">Six weeks of flat coastal walking ended somewhere outside Palamaner without announcing itself. I noticed it in the calves before I noticed it on the horizon.</p>
+            <a href="#" onClick="{{ goDispatches }}" style="display:inline-block;margin-top:20px;font:600 11px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;color:var(--k-accent-text);text-decoration:none;border-bottom:2px solid var(--k-accent);padding-bottom:4px">Read all dispatches</a>
+          </div>
+          <div style="{{ photoTallStyle }}"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isRoute }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-muted);margin-bottom:22px">Section 01 — The route</div>
+      <h2 style="{{ secTitleStyle }}">South<br>to north</h2>
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:26px;margin-top:26px">
+        <div style="flex:1;min-width:220px">
+          <div style="display:flex;justify-content:space-between;font:500 9.5px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">
+            <span>Scrub the walk — day {{ sliderDay }}</span><span style="color:var(--k-accent-text)">{{ sliderPlace }}</span>
+          </div>
+          <input type="range" min="1" max="200" value="{{ sliderDay }}" onChange="{{ onSlide }}" onInput="{{ onSlide }}" style="width:100%">
+        </div>
+        <div style="font:400 11px/1.4 'Archivo';color:var(--k-faint);max-width:34ch">The line draws itself as you scroll. Drag the slider to jump to any day of the two hundred.</div>
+      </div>
+    </div>
+
+    <div style="{{ routeGrid }}">
+      <div style="border-right:2px solid var(--k-rule)">
+        <div style="{{ ledgerHead }}">
+          <div style="padding:12px 14px;border-right:1px solid var(--k-hair)">Km</div>
+          <div style="padding:12px 14px;border-right:1px solid var(--k-hair)">Elev.</div>
+          <div style="padding:12px 14px">Waypoint</div>
+        </div>
+
+        <div ref="{{ trackRef }}" style="{{ trackStyle }}">
+          <sc-for list="{{ terrain }}" as="t" hint-placeholder-count="6">
+            <div style="{{ t.style }}">
+              <div style="transform:translateY(-100%);margin-top:-6px;display:flex;align-items:baseline;gap:9px;padding:5px 14px;background:var(--k-bg);box-shadow:0 0 0 4px var(--k-bg)">
+                <span style="font:600 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-accent)">Terrain</span>
+                <span style="font:600 10.5px/1 'Archivo';letter-spacing:.14em;text-transform:uppercase">{{ t.label }}</span>
+                <span style="font:400 10.5px/1 'Archivo';color:var(--k-faint)">{{ t.sub }}</span>
+              </div>
+            </div>
+          </sc-for>
+
+          <svg viewBox="{{ svgViewBox }}" preserveAspectRatio="none" style="{{ svgStyle }}">
+            <polygon points="{{ profilePoints }}" fill="var(--k-tint)"></polygon>
+            <polyline points="{{ spinePoints }}" fill="none" stroke="var(--k-hair)" stroke-width="2"></polyline>
+            <polyline points="{{ spinePoints }}" fill="none" stroke="var(--k-accent)" stroke-width="3" stroke-dasharray="{{ dashLen }}" stroke-dashoffset="{{ dashOffset }}"></polyline>
+          </svg>
+
+          <sc-for list="{{ wps }}" as="w" hint-placeholder-count="15">
+            <div style="{{ w.style }}">
+              <div class="k-row" style="{{ w.rowStyle }}" onMouseEnter="{{ w.onEnter }}" onClick="{{ w.onClick }}">
+                <div style="padding:4px 14px;font:500 12px/1 'Archivo';font-variant-numeric:tabular-nums;color:var(--k-muted)">{{ w.kmLabel }}</div>
+                <div style="padding:4px 14px;font:400 10.5px/1 'Archivo';font-variant-numeric:tabular-nums;color:var(--k-faint);text-align:right">{{ w.elLabel }}</div>
+                <div style="display:flex;align-items:center;gap:11px;padding:0 14px;margin-left:-20px">
+                  <span style="{{ w.dotStyle }}"></span>
+                  <span style="{{ w.nameStyle }}">{{ w.n }}</span>
+                  <span style="font:400 9.5px/1 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-faint)">{{ w.s }}</span>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div>
+        <div style="{{ detailStyle }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px">
+            <span style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-accent)">Waypoint {{ act.i }}</span>
+            <span style="font:400 11px/1 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-faint)">{{ actProgress }} of the walk</span>
+          </div>
+          <div style="height:2px;background:var(--k-rule);margin-bottom:22px"></div>
+          <h3 style="{{ detailTitleStyle }}">{{ act.n }}</h3>
+          <div style="font:500 11px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-top:14px">{{ act.s }}</div>
+          <div style="{{ detailStats }}">
+            <div style="padding:16px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:8px">Day</div><div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:32px;line-height:1;font-variant-numeric:tabular-nums">{{ act.day }}</div></div>
+            <div style="padding:16px 0 16px 18px"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:8px">Km mark</div><div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:32px;line-height:1;font-variant-numeric:tabular-nums">{{ act.kmLabel }}</div></div>
+            <div style="padding:16px 0 16px 18px"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:8px">Elevation</div><div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:32px;line-height:1;font-variant-numeric:tabular-nums">{{ act.elLabel }}</div></div>
+          </div>
+          <p style="margin:20px 0 0;font-size:15.5px;line-height:1.6;color:var(--k-muted);text-wrap:pretty">{{ act.note }}</p>
+          <div style="{{ photoTallStyle }}"></div>
+          <div style="font:400 10px/1.3 'Archivo';color:var(--k-faint);margin-top:8px">Photo slot — {{ act.n }}, 4:5, black and white</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;padding:18px;border-top:2px solid var(--k-rule)">
+      <span style="font:400 11px/1.3 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-faint)">Elevation to scale — 0 to 2,740 m, left to right</span>
+      <span style="font:500 11px/1 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-accent-text);font-variant-numeric:tabular-nums">Line drawn: {{ scrollPct }}</span>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isTracker }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-accent);margin-bottom:22px">Live — updated from the field</div>
+      <h2 style="{{ secTitleStyle }}">Where he<br>is now</h2>
+    </div>
+    <div style="{{ grid3 }}">
+      <div style="padding:24px 18px"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">Position</div><div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:30px;line-height:1;font-variant-numeric:tabular-nums">13°13′N<br>79°06′E</div><div style="font:400 11px/1.5 'Archivo';color:var(--k-faint);margin-top:10px">Chittoor district, Andhra Pradesh</div></div>
+      <div style="padding:24px 18px"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">Today's leg</div><div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:30px;line-height:1;font-variant-numeric:tabular-nums">18.6 / 23 km</div><div style="font:400 11px/1.5 'Archivo';color:var(--k-faint);margin-top:10px">Palamaner → Bangarupalem, 610 m ascent</div></div>
+      <div style="padding:24px 18px"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px">Conditions</div><div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:30px;line-height:1;font-variant-numeric:tabular-nums">36 °C</div><div style="font:400 11px/1.5 'Archivo';color:var(--k-faint);margin-top:10px">Clear, headwind 14 km/h, humidity 41%</div></div>
+    </div>
+    <div style="{{ padStyle }}">
+      <div style="display:flex;justify-content:space-between;font:500 9.5px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:12px"><span>Progress</span><span style="font-variant-numeric:tabular-nums">{{ progressPct }}</span></div>
+      <div style="height:22px;background:var(--k-tint);position:relative">
+        <div style="{{ progressFill }}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font:400 10px/1 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-faint);margin-top:8px"><span>Kanyakumari</span><span>Kashmir</span></div>
+      <div style="font:400 12px/1.6 'Archivo';color:var(--k-muted);margin-top:20px;max-width:60ch">Position is transmitted twice daily by satellite messenger — at the morning start and at the evening stop. Between pings the dot does not move, which is honest: so does he, sometimes.</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isDispatches }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-muted);margin-bottom:22px">Section 02 — Dispatches</div>
+      <h2 style="{{ secTitleStyle }}">Field<br>journal</h2>
+    </div>
+    <div style="padding:0 18px 22px">
+      <div style="font:500 9.5px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:12px">Filter by terrain</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+          <button class="k-chip" onClick="{{ f.go }}" style="{{ f.style }}">{{ f.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:24px;margin-top:24px;border-top:1px solid var(--k-hair);padding-top:20px">
+        <div style="flex:1;min-width:240px">
+          <div style="display:flex;justify-content:space-between;font:500 9.5px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:10px"><span>Up to day {{ maxDay }}</span><span style="color:var(--k-accent-text)">{{ shownCount }} shown</span></div>
+          <input type="range" min="1" max="200" value="{{ maxDay }}" onChange="{{ onMaxDay }}" onInput="{{ onMaxDay }}" style="width:100%">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <sc-for list="{{ dispatches }}" as="d" hint-placeholder-count="6">
+        <div style="border-top:2px solid var(--k-rule)">
+          <div class="k-row" onClick="{{ d.toggle }}" style="{{ d.headStyle }}">
+            <div style="font:500 11px/1.4 'Archivo';letter-spacing:.16em;text-transform:uppercase;color:var(--k-muted);min-width:120px">Day {{ d.dayLabel }}<br><span style="color:var(--k-faint);letter-spacing:.1em">{{ d.date }}</span></div>
+            <div style="flex:1;min-width:200px">
+              <div style="{{ d.titleStyle }}">{{ d.title }}</div>
+              <div style="font:400 10.5px/1 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-faint);margin-top:8px">{{ d.place }} · {{ d.terrain }} · km {{ d.kmLabel }}</div>
+            </div>
+            <div style="font:600 11px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;color:var(--k-accent);flex:none">{{ d.sign }}</div>
+          </div>
+          <sc-if value="{{ d.open }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ d.bodyStyle }}">
+              <div>
+                <p style="margin:0 0 20px;font-size:17px;line-height:1.65;color:var(--k-ink);max-width:60ch">{{ d.body }}</p>
+                <div style="border-top:2px solid var(--k-rule);border-bottom:2px solid var(--k-rule);padding:22px 0;margin:22px 0">
+                  <p style="margin:0;max-width:28ch;font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:34px;line-height:1;letter-spacing:-.03em;text-transform:uppercase">{{ d.quote }}</p>
+                </div>
+                <div style="{{ photoWideStyle }}"></div>
+                <div style="font:400 10.5px/1.4 'Archivo';color:var(--k-faint);margin-top:8px">{{ d.caption }}</div>
+              </div>
+              <div style="{{ logStyle }}">
+                <div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:14px">Log</div>
+                <div style="display:flex;flex-direction:column;gap:12px">
+                  <div><div style="font:400 9.5px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;color:var(--k-faint);margin-bottom:5px">Distance</div><div style="font:500 14px/1 'Archivo';font-variant-numeric:tabular-nums">{{ d.dist }}</div></div>
+                  <div><div style="font:400 9.5px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;color:var(--k-faint);margin-bottom:5px">Ascent</div><div style="font:500 14px/1 'Archivo';font-variant-numeric:tabular-nums">{{ d.ascent }}</div></div>
+                  <div><div style="font:400 9.5px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;color:var(--k-faint);margin-bottom:5px">Max temp</div><div style="font:500 14px/1 'Archivo';font-variant-numeric:tabular-nums">{{ d.temp }}</div></div>
+                  <div><div style="font:400 9.5px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;color:var(--k-faint);margin-bottom:5px">Slept</div><div style="font:500 14px/1 'Archivo'">{{ d.slept }}</div></div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+      <div style="border-top:2px solid var(--k-rule);padding:18px;font:400 11px/1.3 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-faint)">{{ shownCount }} of 8 dispatches filed · 200 planned</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isKit }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-muted);margin-bottom:22px">Section 03 — Kit</div>
+      <h2 style="{{ secTitleStyle }}">9.4 kg,<br>carried</h2>
+      <p style="margin:26px 0 0;max-width:56ch;font-size:16.5px;line-height:1.6;color:var(--k-muted)">Everything on the walk is on his back. Weights are as measured on day one; the list is updated whenever something is replaced, which the log records honestly.</p>
+    </div>
+    <div>
+      <div style="{{ kitHead }}">
+        <div style="padding:12px 18px">Item</div>
+        <div style="padding:12px 14px">Spec</div>
+        <div style="padding:12px 14px;text-align:right">Weight</div>
+        <div style="padding:12px 18px">Field note</div>
+      </div>
+      <sc-for list="{{ kit }}" as="k" hint-placeholder-count="10">
+        <div class="k-row" style="{{ kitRow }}">
+          <div style="padding:14px 18px;font:500 15px/1.2 'Archivo'">{{ k.item }}</div>
+          <div style="padding:14px;font:400 13px/1.4 'Archivo';color:var(--k-muted)">{{ k.spec }}</div>
+          <div style="padding:14px;font:500 13px/1.2 'Archivo';font-variant-numeric:tabular-nums;text-align:right">{{ k.w }}</div>
+          <div style="padding:14px 18px;font:400 13px/1.5 'Archivo';color:var(--k-faint)">{{ k.note }}</div>
+        </div>
+      </sc-for>
+      <div style="{{ kitRow }}border-top:2px solid var(--k-rule)">
+        <div style="padding:16px 18px;font:600 11px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase">Total</div>
+        <div></div>
+        <div style="padding:16px 14px;font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:34px;line-height:.9;text-align:right;font-variant-numeric:tabular-nums">9.4 kg</div>
+        <div style="padding:16px 18px;font:400 12px/1.5 'Archivo';color:var(--k-faint)">Plus 2 l water, which is another 2 kg and the difference between a good day and a bad one.</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-muted);margin-bottom:22px">Section 04 — The walker</div>
+      <h2 style="{{ secTitleStyle }}">One<br>person</h2>
+    </div>
+    <div style="{{ grid2 }}">
+      <div style="padding:0 18px 34px">
+        <p style="margin:0 0 22px;font-size:18px;line-height:1.65;max-width:58ch">He has walked long distances before — the Konkan coast in 2021, the Brahmaputra from Pasighat down in 2023 — but never at this length and never with a camera he was obliged to feed every day.</p>
+        <p style="margin:0 0 22px;font-size:16.5px;line-height:1.68;color:var(--k-muted);max-width:58ch">The plan is unglamorous. Twenty kilometres a day, six days a week, one rest day taken wherever the road allows it. No support vehicle, no fixer, no pre-booked accommodation. Where the day ends is where he sleeps, and the film is whatever happens in between.</p>
+        <p style="margin:0;font-size:16.5px;line-height:1.68;color:var(--k-muted);max-width:58ch">The camera is a single body with two lenses, charged from a panel on the pack. Every frame in the film is shot by the person walking, which is both the constraint and the reason for it.</p>
+        <div style="{{ grid3in }}">
+          <div style="padding:18px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:8px">Previous walks</div><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:38px;line-height:.9;font-variant-numeric:tabular-nums">2,300 km</div></div>
+          <div style="padding:18px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:8px">Crew</div><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:38px;line-height:.9">1</div></div>
+          <div style="padding:18px 0"><div style="font:500 9px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-muted);margin-bottom:8px">Rest days</div><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:38px;line-height:.9;font-variant-numeric:tabular-nums">26</div></div>
+        </div>
+      </div>
+      <div style="padding:0 18px 34px">
+        <div style="{{ photoTall0Style }}"></div>
+        <div style="font:400 10.5px/1.4 'Archivo';color:var(--k-faint);margin-top:8px">Portrait slot — 4:5, black and white</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isSupport }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-muted);margin-bottom:22px">Section 05 — Support</div>
+      <h2 style="{{ secTitleStyle }}">Fund<br>the walk</h2>
+      <p style="margin:26px 0 0;max-width:58ch;font-size:16.5px;line-height:1.6;color:var(--k-muted)">The walk carries no cause and raises money for nothing but itself: film stock, boots, insurance, and the two hundred days it takes. Every rupee goes into the production and the accounts are published at the end.</p>
+    </div>
+    <div style="padding:0 18px 30px">
+      <div style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-muted);margin-bottom:16px">Individual</div>
+      <div style="{{ grid3 }}">
+        <div style="padding:22px 18px;border:2px solid var(--k-rule)"><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:44px;line-height:.9;font-variant-numeric:tabular-nums">₹500</div><div style="font:500 10px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-accent-text);margin-top:12px">A day of walking</div><div style="font:400 13px/1.55 'Archivo';color:var(--k-muted);margin-top:10px">Name in the end credits, under the day you funded.</div></div>
+        <div style="padding:22px 18px;border:2px solid var(--k-rule)"><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:44px;line-height:.9;font-variant-numeric:tabular-nums">₹5,000</div><div style="font:500 10px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-accent-text);margin-top:12px">A hundred kilometres</div><div style="font:400 13px/1.55 'Archivo';color:var(--k-muted);margin-top:10px">Credit, plus a signed print from the leg you funded.</div></div>
+        <div style="padding:22px 18px;border:2px solid var(--k-accent);background:var(--k-tint)"><div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:44px;line-height:.9;font-variant-numeric:tabular-nums">₹25,000</div><div style="font:500 10px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:var(--k-accent-text);margin-top:12px">Patron</div><div style="font:400 13px/1.55 'Archivo';color:var(--k-muted);margin-top:10px">All of the above, a private cut of the daily footage, and an invitation to the first screening.</div></div>
+      </div>
+      <a class="k-btn" href="#" style="display:inline-block;margin-top:20px;background:var(--k-accent);color:#f3f2f2;text-decoration:none;font:600 11px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;padding:16px 20px">Contribute</a>
+    </div>
+    <div style="padding:0 18px 34px">
+      <div style="border-top:2px solid var(--k-rule);padding-top:26px">
+        <div style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-muted);margin-bottom:16px">Brand partnership — four tiers</div>
+        <div style="{{ tierGrid }}">
+          <sc-for list="{{ tiers }}" as="t" hint-placeholder-count="4">
+            <div style="{{ t.style }}">
+              <div style="font:600 9.5px/1 'Archivo';letter-spacing:.2em;text-transform:uppercase;color:{{ t.kickerColor }};margin-bottom:12px">{{ t.tier }}</div>
+              <div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:30px;line-height:.95;letter-spacing:-.02em;text-transform:uppercase">{{ t.name }}</div>
+              <div style="font-family:'Archivo';font-weight:500;font-stretch:62%;font-size:36px;line-height:.9;font-variant-numeric:tabular-nums;margin:14px 0">{{ t.price }}</div>
+              <div style="font:400 12.5px/1.6 'Archivo';color:{{ t.bodyColor }}">{{ t.body }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    <div style="padding:0 18px 40px">
+      <div style="border-top:2px solid var(--k-rule);padding-top:26px;{{ newsPad }}">
+        <div style="font-family:'Archivo';font-weight:500;font-stretch:75%;font-size:30px;line-height:1;letter-spacing:-.02em;text-transform:uppercase">One dispatch a week, no other mail</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;max-width:520px">
+          <input class="input" type="email" placeholder="you@address" value="{{ email }}" onChange="{{ onEmail }}" style="flex:1;min-width:200px;background:transparent;color:var(--k-ink);border:2px solid var(--k-rule);border-radius:0;padding:14px;font:400 14px/1 'Archivo'">
+          <button class="k-btn" onClick="{{ subscribe }}" style="background:var(--k-accent);color:#f3f2f2;border:0;font:600 11px/1 'Archivo';letter-spacing:.16em;text-transform:uppercase;padding:15px 20px;cursor:pointer">Subscribe</button>
+        </div>
+        <div style="{{ subMsgStyle }}">{{ subMsg }}</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isPress }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-muted);margin-bottom:22px">Section 06 — Press</div>
+      <h2 style="{{ secTitleStyle }}">Media<br>kit</h2>
+    </div>
+    <div style="{{ grid2 }}">
+      <div style="padding:0 18px 30px">
+        <div style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-muted);margin-bottom:14px">Downloads</div>
+        <sc-for list="{{ press }}" as="p" hint-placeholder-count="5">
+          <a class="k-row" href="#" style="{{ pressRow }}">
+            <span style="font:500 14.5px/1.2 'Archivo'">{{ p.name }}</span>
+            <span style="font:400 11px/1 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-faint)">{{ p.meta }}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div style="padding:0 18px 30px">
+        <div style="font:500 9.5px/1 'Archivo';letter-spacing:.22em;text-transform:uppercase;color:var(--k-muted);margin-bottom:14px">Fact sheet</div>
+        <div style="font:400 14px/1.9 'Archivo';color:var(--k-muted)">Title — Project K2K, a loong walk<br>Route — Kanyakumari to Kashmir, 4,000 km<br>Departure — 1 December 2026, 06:00 IST<br>Arrival — expected 18 June 2027<br>Runtime — 96 min feature, 29 weekly episodes<br>Crew — one<br>Languages — English, Hindi, Tamil<br>Contact — press@projectk2k.in</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isFaq }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="{{ padStyle }}">
+      <div style="font:500 10px/1 'Archivo';letter-spacing:.24em;text-transform:uppercase;color:var(--k-muted);margin-bottom:22px">Section 07 — Questions</div>
+      <h2 style="{{ secTitleStyle }}">The usual<br>questions</h2>
+    </div>
+    <div>
+      <sc-for list="{{ faq }}" as="f" hint-placeholder-count="6">
+        <div style="border-top:2px solid var(--k-rule)">
+          <div class="k-row" onClick="{{ f.toggle }}" style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;padding:20px 18px;cursor:pointer">
+            <span style="{{ f.qStyle }}">{{ f.q }}</span>
+            <span style="font:600 12px/1 'Archivo';color:var(--k-accent);flex:none">{{ f.sign }}</span>
+          </div>
+          <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 18px 24px;max-width:66ch;font:400 16px/1.65 'Archivo';color:var(--k-muted)">{{ f.a }}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <div style="border-top:2px solid var(--k-rule);padding:26px 18px;display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:flex-end">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <span style="font-family:'Archivo';font-weight:600;font-stretch:62%;font-size:34px;line-height:.78;letter-spacing:-.03em">K2K</span>
+      <span style="width:2px;height:20px;background:var(--k-accent)"></span>
+      <span style="font:500 9.5px/1.4 'Archivo';letter-spacing:.18em;text-transform:uppercase;color:var(--k-muted)">Project K2K<br>A loong walk</span>
+    </div>
+    <div style="font:400 10px/1.5 'Archivo';letter-spacing:.14em;text-transform:uppercase;color:var(--k-faint);text-align:right">projectk2k.in<br>partners@projectk2k.in<br>4,000 km · 200 days · solo</div>
+  </div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { page: 'home', theme: 'day', now: Date.now(), active: 0, sliderDay: 41,
+            scroll: 0, w: 1280, roll: 0, maxDay: 200, filter: 'All', openD: 0, openF: -1,
+            email: '', subbed: false };
+
+  static WPS = [
+    { n:'Kanyakumari', s:'Tamil Nadu', km:0, el:0, note:'Three seas meet at the last rock of the mainland. The first step is taken at 06:00 with the tide out.' },
+    { n:'Madurai', s:'Tamil Nadu', km:240, el:140, note:'Twelve days in, the flat heat of the Vaigai basin. Walking begins at four in the morning and stops by eleven.' },
+    { n:'Tiruchirappalli', s:'Tamil Nadu', km:400, el:88, note:'Cauvery delta. Highway shoulder for 60 km, then canal paths the rest of the way north.' },
+    { n:'Bengaluru', s:'Karnataka', km:760, el:920, note:'The ground tilts up. First sustained climb of the walk — 800 m gained over eleven days on the ghat road.' },
+    { n:'Hyderabad', s:'Telangana', km:1330, el:542, note:'Deccan proper. Granite, thorn scrub, forty-degree afternoons and 90 km between reliable water.' },
+    { n:'Nagpur', s:'Maharashtra', km:1830, el:310, note:'The geographic centre of the country. Day 92: halfway in distance, not in difficulty.' },
+    { n:'Jabalpur', s:'Madhya Pradesh', km:2100, el:412, note:'Narmada crossing. Central highlands — short steep hills, the first cold nights since departure.' },
+    { n:'Jhansi', s:'Uttar Pradesh', km:2400, el:285, note:'Bundelkhand. Dry, emptied villages, long stretches with no shade at all.' },
+    { n:'Agra', s:'Uttar Pradesh', km:2620, el:171, note:'Yamuna. The plain flattens out completely and stays flat for 600 km.' },
+    { n:'Delhi', s:'Delhi', km:2830, el:216, note:'Day 142. Kit replaced, boots replaced, four days off the feet. The only scheduled rest of the walk.' },
+    { n:'Ambala', s:'Haryana', km:3070, el:276, note:'Grand Trunk Road north. Canal-side walking, mustard fields, the Shivaliks visible on clear mornings.' },
+    { n:'Jammu', s:'Jammu & Kashmir', km:3480, el:327, note:'The plain ends here. From this point the route only goes up.' },
+    { n:'Banihal', s:'Jammu & Kashmir', km:3720, el:2194, note:'Pir Panjal. 1,900 m of ascent in nine days, snow underfoot, six hours of walking a day at most.' },
+    { n:'Srinagar', s:'Jammu & Kashmir', km:3900, el:1585, note:'Day 191. Down into the valley, the Jhelum, and the first flat kilometres in three weeks.' },
+    { n:'Sonamarg', s:'Jammu & Kashmir', km:4000, el:2740, note:'Day 200. The last waypoint at 2,740 m. Four thousand kilometres behind, the Himalaya in front.' }
+  ];
+
+  static TERRAIN = [
+    { km:170, label:'Coastal plain', sub:'Sea level → 200 m' },
+    { km:700, label:'Deccan plateau', sub:'Climb to 900 m' },
+    { km:1780, label:'Central highlands', sub:'Rolling, 300–500 m' },
+    { km:2780, label:'Gangetic plain', sub:'Flat, 600 km' },
+    { km:3420, label:'Shivalik foothills', sub:'Ascent begins' },
+    { km:3650, label:'Pir Panjal', sub:'2,000 m+ passes' }
+  ];
+
+  static DISPATCHES = [
+    { day:1, date:'01.12.2026', title:'The last rock', place:'Kanyakumari', terrain:'Coastal', km:0, dist:'21.2 km', ascent:'40 m', temp:'31 °C', slept:'Lodge, Nagercoil',
+      body:'Three seas and a crowd of pilgrims photographing the sunrise, none of them aware that anything was beginning. I put a hand on the water, turned around, and walked north out of the town before the heat arrived. Twenty-one kilometres later the sea was gone and did not come back.',
+      quote:'Day one is the only day that is purely symbolic.', caption:'Cape Comorin, 06:04. Plate 01.' },
+    { day:12, date:'12.12.2026', title:'The temple town at four in the morning', place:'Madurai', terrain:'Coastal', km:240, dist:'24.0 km', ascent:'110 m', temp:'34 °C', slept:'Bus shelter',
+      body:'Walking starts at four because by eleven the tar is soft. In the dark the road belongs to lorries and dogs, and both give more room than they do in daylight. By the time the sun clears the horizon the day\u2019s work is more than half done, which is the only workable arrangement in the south.',
+      quote:'Four in the morning is not discipline. It is arithmetic.', caption:'Approach to Madurai. Plate 02.' },
+    { day:41, date:'10.01.2027', title:'The ground tilts up', place:'Chittoor', terrain:'Deccan', km:812, dist:'23.4 km', ascent:'610 m', temp:'36 °C', slept:'Bus shelter',
+      body:'Six weeks of flat coastal walking ended somewhere outside Palamaner without announcing itself. I noticed it in the calves before I noticed it on the horizon. A man on a motorcycle stopped to ask where I was walking to; when I said Kashmir he laughed, then looked at my feet, then stopped laughing.',
+      quote:'Forty-one days in, the walk stopped being a plan and became a job.', caption:'The ghat road above Palamaner, 06:40. Plate 03.' },
+    { day:73, date:'11.02.2027', title:'Ninety kilometres between taps', place:'Mahbubnagar', terrain:'Deccan', km:1210, dist:'26.1 km', ascent:'180 m', temp:'39 °C', slept:'Roadside dhaba',
+      body:'The plateau does not offer scenery, it offers arithmetic: four litres carried, six litres needed, ninety kilometres to the next place that certainly has water. Granite, thorn, and a wind that dries you faster than the sun. Three days of this and then a hand pump that works, which is the best thing that has happened all month.',
+      quote:'Out here the day is planned around taps, not distances.', caption:'Thorn scrub near Jadcherla. Plate 04.' },
+    { day:92, date:'02.03.2027', title:'The middle of the country', place:'Nagpur', terrain:'Highlands', km:1830, dist:'22.8 km', ascent:'240 m', temp:'35 °C', slept:'Guest house',
+      body:'A stone marks the geographic centre of India and nobody was looking at it. Halfway in distance, nowhere near halfway in effort — everything difficult is stacked into the last quarter. Boots replaced today, the second pair of five.',
+      quote:'Halfway in distance, not in difficulty.', caption:'Zero Mile, Nagpur. Plate 05.' },
+    { day:142, date:'21.04.2027', title:'Four days off the feet', place:'Delhi', terrain:'Plain', km:2830, dist:'0 km', ascent:'0 m', temp:'41 °C', slept:'Friend\u2019s floor',
+      body:'The only scheduled rest of the walk. Kit stripped, weighed, replaced. The left knee looked at by someone qualified, who used the word fine in a tone that did not mean fine. Six hundred kilometres of flat behind, and the first mountains in three years ahead.',
+      quote:'Rest is harder than walking. Walking has a direction.', caption:'Kit laid out, day 142. Plate 06.' },
+    { day:178, date:'27.05.2027', title:'Snow at the pass', place:'Banihal', terrain:'Himalaya', km:3720, dist:'11.4 km', ascent:'940 m', temp:'4 °C', slept:'Road crew shelter',
+      body:'Eleven kilometres today and it took as long as twenty-six on the plateau. Snow underfoot from the middle of the morning, the road crew sharing tea and treating the whole enterprise as a mild curiosity. The air is thin enough that thinking slows down before the legs do.',
+      quote:'Eleven kilometres. The hardest day of the two hundred.', caption:'Pir Panjal, above Banihal. Plate 07.' },
+    { day:200, date:'18.06.2027', title:'Sonamarg', place:'Sonamarg', terrain:'Himalaya', km:4000, dist:'18.0 km', ascent:'620 m', temp:'12 °C', slept:'—',
+      body:'Two thousand seven hundred and forty metres, four thousand kilometres, two hundred days. The last hour was the slowest of the walk and not because of the ground. Nothing to say at the end that was not already said by the walking.',
+      quote:'Four thousand kilometres behind, the Himalaya in front.', caption:'Sonamarg, 17:20. Plate 08.' }
+  ];
+
+  static KIT = [
+    { item:'Pack', spec:'42 l frameless', w:'880 g', note:'Straps re-stitched twice. Nothing else has failed.' },
+    { item:'Shelter', spec:'Tarp, 2.4 × 1.5 m', w:'340 g', note:'Used 38 nights. Bus shelters used more often.' },
+    { item:'Quilt', spec:'Down, 5 °C rating', w:'620 g', note:'Too warm until Jhansi, then exactly right.' },
+    { item:'Camera', spec:'Full-frame body', w:'1,420 g', note:'The heaviest object and the whole reason for the walk.' },
+    { item:'Lenses', spec:'28 mm, 55 mm', w:'690 g', note:'Two primes. No zoom, no choices to make at dawn.' },
+    { item:'Solar panel', spec:'21 W folding', w:'520 g', note:'Charges the camera in four hours of Deccan sun.' },
+    { item:'Satellite messenger', spec:'Two-way, GPS', w:'115 g', note:'Twice-daily ping. Non-negotiable insurance condition.' },
+    { item:'Boots', spec:'Trail, non-waterproof', w:'790 g', note:'Five pairs planned. Wet feet dry; hot feet blister.' },
+    { item:'Water', spec:'2 × 1 l soft bottles', w:'80 g', note:'Empty weight. Full is another 2 kg.' },
+    { item:'Everything else', spec:'Med, stove, clothing, papers', w:'3,045 g', note:'Audited every rest day. It only ever grows.' }
+  ];
+
+  static PRESS = [
+    { name:'Press release — launch', meta:'PDF · 2 pages' },
+    { name:'Fact sheet & route map', meta:'PDF · 4 pages' },
+    { name:'Stills — high resolution', meta:'ZIP · 24 images' },
+    { name:'Logo lockups', meta:'ZIP · SVG, PNG' },
+    { name:'Teaser — 90 seconds', meta:'MP4 · 1080p' }
+  ];
+
+  static FAQ = [
+    { q:'Is he really walking the whole way?', a:'Yes. Every kilometre of the 4,000 is on foot. Where a road is closed the detour is walked too, which is why the route is 4,000 km and not the 3,100 km a straight line would give.' },
+    { q:'What happens if he is injured?', a:'The walk pauses at the nearest town and resumes from the same point once he can walk again. Nothing is skipped, and the day count keeps running. Insurance requires a twice-daily satellite ping.' },
+    { q:'Who is filming?', a:'He is. One body, two primes, charged from a panel on the pack. There is no second camera and no crew, which is a constraint the film is built around rather than in spite of.' },
+    { q:'How is the route chosen?', a:'Smallest roads that connect, avoiding national highways wherever a parallel state road exists. Fifteen fixed waypoints; everything between them is decided a few days at a time.' },
+    { q:'Can I walk a stretch with him?', a:'For a day, yes, on the plains — write in advance. Not in the Pir Panjal, where the margins are too thin to be responsible for anyone else.' },
+    { q:'When does the film come out?', a:'Festival submissions begin in late 2027. The weekly cuts publish throughout the walk; the feature is edited after it ends.' }
+  ];
+
+  componentDidMount() {
+    this.t = setInterval(() => this.setState({ now: Date.now() }), 1000);
+    this.onResize = () => this.setState({ w: window.innerWidth });
+    this.onScroll = () => this.setState({ scroll: window.scrollY || document.documentElement.scrollTop || 0 });
+    window.addEventListener('resize', this.onResize);
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    this.onResize();
+    const t0 = performance.now();
+    const step = () => {
+      const p = Math.min(1, (performance.now() - t0) / 1100);
+      this.setState({ roll: 1 - Math.pow(1 - p, 3) });
+      if (p < 1) this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+    this.io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add('k-in'); }), { threshold: 0.12 });
+    this.scan = setInterval(() => document.querySelectorAll('.k-rise:not(.k-in)').forEach(el => this.io.observe(el)), 500);
+  }
+  componentWillUnmount() {
+    clearInterval(this.t); clearInterval(this.scan);
+    cancelAnimationFrame(this.raf);
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('scroll', this.onScroll);
+    if (this.io) this.io.disconnect();
+  }
+
+  go(page) { return e => { if (e) e.preventDefault(); this.setState({ page }); window.scrollTo(0, 0); }; }
+
+  renderVals() {
+    const S = this.state, narrow = S.w < 760, night = S.theme === 'night';
+    const TOTAL_KM = 4000, TOTAL_DAYS = 200, MAXEL = 2740;
+    const pad = narrow ? '20px 18px 30px' : '40px 18px 34px';
+
+    const themeVars = night
+      ? { '--k-bg':'#201e1d','--k-ink':'#f3f2f2','--k-muted':'#a9a5a4','--k-faint':'#7d7979','--k-rule':'#f3f2f2','--k-hair':'#3d3938','--k-tint':'#2c2928','--k-accent':'#ec3013','--k-accent-600':'#c92509','--k-accent-text':'#ff7d63' }
+      : { '--k-bg':'#f3f2f2','--k-ink':'#201e1d','--k-muted':'#605d5d','--k-faint':'#9b9797','--k-rule':'#201e1d','--k-hair':'#d7d3d3','--k-tint':'#e4e1e1','--k-accent':'#ec3013','--k-accent-600':'#c92509','--k-accent-text':'#ae1800' };
+
+    const photoBase = (deg, gap) => ({
+      background: 'repeating-linear-gradient(' + deg + 'deg,' + (night ? '#f3f2f2' : '#201e1d') + ' 0 1px,' + (night ? '#2c2928' : '#e3e0e0') + ' 1px ' + gap + 'px)',
+      filter: 'grayscale(1) contrast(1.15)'
+    });
+
+    const PAGES = [['home','Home'],['route','Route'],['tracker','Tracker'],['dispatches','Dispatches'],['kit','Kit'],['about','Walker'],['support','Support'],['press','Press'],['faq','FAQ']];
+    const tabs = PAGES.map(([id,label]) => ({
+      label, go: this.go(id),
+      style: { flex:'none', textDecoration:'none', font:"500 10px/1 'Archivo'", letterSpacing:'.16em',
+        textTransform:'uppercase', padding:'19px 12px',
+        color: S.page === id ? 'var(--k-ink)' : 'var(--k-faint)',
+        borderBottom: S.page === id ? '3px solid #ec3013' : '3px solid transparent', marginBottom:'-2px' }
+    }));
+
+    // counters
+    const start = new Date(2026, 11, 1).getTime(), DAY = 86400000;
+    const elapsed = (S.now - start) / DAY;
+    const walked = Math.max(0, Math.min(TOTAL_DAYS, Math.floor(elapsed)));
+    const kmDone = Math.round(walked * (TOTAL_KM / TOTAL_DAYS));
+    const pre = elapsed < 0, toGo = Math.ceil(-elapsed);
+    const secs = Math.max(0, Math.floor((start - S.now) / 1000));
+    const clock = String(Math.floor(secs/3600)%24).padStart(2,'0') + ':' + String(Math.floor(secs/60)%60).padStart(2,'0') + ':' + String(secs%60).padStart(2,'0');
+
+    // route geometry
+    const H = narrow ? 1700 : 2400, BW = narrow ? 120 : 190, LEFT = narrow ? 66 : 96;
+    const y = k => (k / TOTAL_KM) * H, xe = e => 6 + (e / MAXEL) * (BW - 18);
+    const cols = LEFT + 'px ' + BW + 'px 1fr';
+    const wps = Component.WPS.map((w, i) => {
+      const on = i === S.active;
+      return { ...w, i, day: Math.round(w.km / TOTAL_KM * TOTAL_DAYS),
+        kmLabel: w.km.toLocaleString('en-US'),
+        elLabel: w.el === 0 ? 'Sea level' : w.el.toLocaleString('en-US') + ' m',
+        style: { position:'absolute', top: y(w.km) + 'px', left:0, right:0 },
+        rowStyle: { display:'grid', gridTemplateColumns: cols, cursor:'pointer' },
+        dotStyle: { width: on ? '13px' : '9px', height: on ? '13px' : '9px', background: on ? '#ec3013' : 'var(--k-ink)', flex:'none', transition:'all .12s' },
+        nameStyle: { fontFamily:'Archivo', fontWeight:500, fontStretch:'75%', fontSize: on ? (narrow ? '22px' : '30px') : (narrow ? '18px' : '24px'),
+          lineHeight:1, letterSpacing:'-.02em', textTransform:'uppercase', color: on ? 'var(--k-ink)' : 'var(--k-muted)', transition:'font-size .12s,color .12s' },
+        onEnter: () => this.setState({ active: i, sliderDay: Math.max(1, Math.round(w.km / TOTAL_KM * TOTAL_DAYS)) }),
+        onClick: () => this.setState({ active: i, sliderDay: Math.max(1, Math.round(w.km / TOTAL_KM * TOTAL_DAYS)) })
+      };
+    });
+    const terrain = Component.TERRAIN.map(t => ({ ...t,
+      style: { position:'absolute', top: y(t.km) + 'px', left:0, right:0, borderTop:'2px solid var(--k-rule)', zIndex:3 } }));
+    const pts = Component.WPS.map(w => xe(w.el).toFixed(1) + ',' + y(w.km).toFixed(1)).join(' ');
+    const act = wps[S.active];
+
+    // scroll-driven draw
+    let prog = 0;
+    if (this.trackEl) {
+      const r = this.trackEl.getBoundingClientRect();
+      prog = Math.max(0, Math.min(1, (window.innerHeight * 0.75 - r.top) / r.height));
+    }
+    const dashLen = Math.round(H * 1.25);
+
+    // dispatches
+    const FILTERS = ['All','Coastal','Deccan','Highlands','Plain','Himalaya'];
+    const filters = FILTERS.map(f => ({ label: f, go: () => this.setState({ filter: f }),
+      style: { background: S.filter === f ? '#ec3013' : 'transparent', color: S.filter === f ? '#f3f2f2' : 'var(--k-ink)',
+        border: '2px solid ' + (S.filter === f ? '#ec3013' : 'var(--k-hair)'), font:"600 10px/1 'Archivo'",
+        letterSpacing:'.16em', textTransform:'uppercase', padding:'11px 13px', cursor:'pointer' } }));
+    const shown = Component.DISPATCHES.filter(d => d.day <= S.maxDay && (S.filter === 'All' || d.terrain === S.filter));
+    const dispatches = shown.map(d => ({ ...d,
+      dayLabel: String(d.day).padStart(3,'0'), kmLabel: d.km.toLocaleString('en-US'),
+      open: S.openD === d.day, sign: S.openD === d.day ? '— Close' : '+ Read',
+      toggle: () => this.setState({ openD: S.openD === d.day ? -1 : d.day }),
+      headStyle: { display:'flex', flexWrap:'wrap', gap:'16px', alignItems:'baseline', padding:'22px 18px', cursor:'pointer' },
+      titleStyle: { fontFamily:'Archivo', fontWeight:500, fontStretch:'62%', fontSize: narrow ? '34px' : '48px',
+        lineHeight:.86, letterSpacing:'-.04em', textTransform:'uppercase' },
+      bodyStyle: { display:'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 200px', gap:'28px', padding:'0 18px 34px' },
+      logStyle: { borderTop: narrow ? '1px solid var(--k-hair)' : 'none', borderLeft: narrow ? 'none' : '1px solid var(--k-hair)', paddingLeft: narrow ? 0 : '20px', paddingTop: narrow ? '18px' : 0 }
+    }));
+
+    const TIERS = [
+      { tier:'Tier 01', name:'Presenting<br>partner', price:'₹60 L', body:'Title card placement, above-fold logo on every dispatch, 6 branded weekly cuts, first look at all footage. One partner only.', hero:true },
+      { tier:'Tier 02', name:'Route partner', price:'₹25 L', body:'End-credit card, logo on the route page, 3 weekly cuts, one 500 km leg named. Two partners.' },
+      { tier:'Tier 03', name:'Kit partner', price:'₹8 L', body:'Product in-frame and field-tested across 200 days, quarterly performance report, credit card.' },
+      { tier:'Tier 04', name:'Dispatch partner', price:'₹3 L', body:'Named sponsorship of 20 consecutive dispatches, footer logo, newsletter mention. Open.' }
+    ];
+    const tiers = TIERS.map(t => ({ tier:t.tier, name:t.name.replace('<br>',' '), price:t.price, body:t.body,
+      kickerColor: t.hero ? '#ffd9d1' : 'var(--k-accent-text)',
+      bodyColor: t.hero ? '#ffe6e1' : 'var(--k-muted)',
+      style: { padding:'22px 20px', background: t.hero ? '#ec3013' : 'var(--k-bg)', color: t.hero ? '#f3f2f2' : 'var(--k-ink)',
+        display:'flex', flexDirection:'column' } }));
+
+    const faq = Component.FAQ.map((f, i) => ({ ...f, open: S.openF === i,
+      sign: S.openF === i ? '—' : '+',
+      toggle: () => this.setState({ openF: S.openF === i ? -1 : i }),
+      qStyle: { fontFamily:'Archivo', fontWeight:500, fontStretch:'75%', fontSize: narrow ? '20px' : '26px',
+        lineHeight:1.02, letterSpacing:'-.02em', textTransform:'uppercase', maxWidth:'34ch' } }));
+
+    const sliderWp = Component.WPS.reduce((b, w) => Math.abs(w.km / TOTAL_KM * TOTAL_DAYS - S.sliderDay) < Math.abs(b.km / TOTAL_KM * TOTAL_DAYS - S.sliderDay) ? w : b, Component.WPS[0]);
+
+    const bd = { border:'2px solid var(--k-rule)', borderLeft:0, borderRight:0 };
+    return {
+      themeVars,
+      themeLabel: night ? 'Day' : 'Night',
+      toggleTheme: () => this.setState({ theme: night ? 'day' : 'night' }),
+      tabs,
+      isHome: S.page === 'home', isRoute: S.page === 'route', isTracker: S.page === 'tracker',
+      isDispatches: S.page === 'dispatches', isKit: S.page === 'kit', isAbout: S.page === 'about',
+      isSupport: S.page === 'support', isPress: S.page === 'press', isFaq: S.page === 'faq',
+      goHome: this.go('home'), goRoute: this.go('route'), goSupport: this.go('support'), goDispatches: this.go('dispatches'),
+
+      padStyle: { padding: pad },
+      heroStyle: { margin:0, fontFamily:'Archivo', fontWeight:500, fontStretch:'62%',
+        fontSize: narrow ? 'clamp(56px,17vw,80px)' : 'clamp(96px,11vw,172px)',
+        lineHeight:.82, letterSpacing:'-.045em', textTransform:'uppercase' },
+      secTitleStyle: { margin:0, fontFamily:'Archivo', fontWeight:500, fontStretch:'62%',
+        fontSize: narrow ? 'clamp(46px,14vw,64px)' : 'clamp(72px,8vw,110px)',
+        lineHeight:.82, letterSpacing:'-.045em', textTransform:'uppercase' },
+      bigNumStyle: { fontFamily:'Archivo', fontWeight:500, fontStretch:'62%', fontSize: narrow ? '64px' : '104px',
+        lineHeight:.82, letterSpacing:'-.03em', fontVariantNumeric:'tabular-nums' },
+      counterGrid: { display:'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr 1fr', ...bd,
+        borderTop:'2px solid var(--k-rule)', borderBottom:'2px solid var(--k-rule)', gap:'1px', background:'var(--k-hair)' },
+      grid2: { display:'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap:'28px' },
+      grid3: { display:'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr 1fr', gap: narrow ? '18px' : '20px', padding:'0 0 24px' },
+      grid3in: { display:'grid', gridTemplateColumns:'1fr 1fr 1fr', borderTop:'1px solid var(--k-hair)', borderBottom:'1px solid var(--k-hair)', marginTop:'26px', gap:'12px' },
+      grid5: { display:'grid', gridTemplateColumns: narrow ? '1fr 1fr' : 'repeat(5,1fr)', gap:'18px',
+        borderTop:'1px solid var(--k-hair)' },
+      tierGrid: { display:'grid', gridTemplateColumns: narrow ? '1fr' : 'repeat(4,1fr)', gap:'2px', background:'var(--k-rule)', border:'2px solid var(--k-rule)' },
+      photoStrip: { display:'grid', gridTemplateColumns: narrow ? '1fr' : '2fr 1fr 1fr', gap:'2px', background:'var(--k-rule)' },
+      photoStyle: { height: narrow ? '160px' : '200px', ...photoBase(94, 9) },
+      photoTallStyle: { aspectRatio:'4/5', marginTop:'24px', ...photoBase(180, 8) },
+      photoTall0Style: { aspectRatio:'4/5', ...photoBase(180, 8) },
+      photoWideStyle: { height: narrow ? '220px' : '400px', ...photoBase(97, 11) },
+      routeGrid: { display:'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 430px' },
+      ledgerHead: { display:'grid', gridTemplateColumns: cols, borderTop:'2px solid var(--k-rule)',
+        borderBottom:'1px solid var(--k-hair)', font:"500 9px/1 'Archivo'", letterSpacing:'.2em',
+        textTransform:'uppercase', color:'var(--k-muted)' },
+      trackStyle: { position:'relative', height: H + 'px' },
+      trackRef: el => { this.trackEl = el; },
+      svgStyle: { position:'absolute', top:0, left: LEFT + 'px', width: BW + 'px', height: H + 'px' },
+      svgViewBox: '0 0 ' + BW + ' ' + H,
+      profilePoints: '6,0 ' + pts + ' 6,' + H,
+      spinePoints: pts,
+      dashLen: dashLen,
+      dashOffset: Math.round(dashLen * (1 - prog)),
+      scrollPct: Math.round(prog * 100) + '%',
+      detailStyle: { position: narrow ? 'static' : 'sticky', top: narrow ? 'auto' : '70px',
+        padding: narrow ? '26px 18px 34px' : '26px 18px 34px', borderTop: narrow ? '2px solid var(--k-rule)' : 'none' },
+      detailTitleStyle: { margin:0, fontFamily:'Archivo', fontWeight:500, fontStretch:'62%',
+        fontSize: narrow ? '46px' : '70px', lineHeight:.84, letterSpacing:'-.04em', textTransform:'uppercase' },
+      detailStats: { display:'grid', gridTemplateColumns:'1fr 1fr 1fr', borderTop:'1px solid var(--k-hair)',
+        borderBottom:'1px solid var(--k-hair)', marginTop:'24px' },
+      wps, terrain, act,
+      actProgress: Math.round(act.km / TOTAL_KM * 100) + '%',
+      sliderDay: S.sliderDay, sliderPlace: sliderWp.n,
+      onSlide: e => {
+        const d = +e.target.value;
+        const w = Component.WPS.reduce((b, x) => Math.abs(x.km / TOTAL_KM * TOTAL_DAYS - d) < Math.abs(b.km / TOTAL_KM * TOTAL_DAYS - d) ? x : b, Component.WPS[0]);
+        this.setState({ sliderDay: d, active: Component.WPS.indexOf(w) });
+      },
+
+      rollDays: String(Math.round((pre ? 0 : walked) * S.roll)).padStart(3,'0'),
+      rollKm: Math.round((TOTAL_KM - kmDone) * S.roll).toLocaleString('en-US'),
+      statusLabel: pre ? 'Departure in' : (walked >= TOTAL_DAYS ? 'Arrived' : 'On the road'),
+      statusValue: pre ? toGo + ' days' : (walked >= TOTAL_DAYS ? 'Kashmir' : 'Day ' + walked),
+      statusNote: pre ? clock + ' to 06:00 IST, Kanyakumari beach — the counters start moving at the first step.'
+                      : 'Averaging 20 km a day. Position updated each evening from the field.',
+
+      trackerState: pre ? 'Pre-departure' : 'Walking',
+      trackerPos: pre ? 'Kanyakumari · 08°04′N 77°33′E' : 'Chittoor · 13°13′N 79°06′E',
+      trackerLeg: pre ? 'Leg 001 — Kanyakumari → Nagercoil, 21 km' : 'Leg 041 — Palamaner → Bangarupalem, 23 km',
+      trackerWx: '36 °C · clear · headwind 14 km/h',
+      pingAgo: (S.now % 300000 / 1000).toFixed(0) + ' s ago',
+      progressPct: (pre ? 0 : Math.round(kmDone / TOTAL_KM * 100)) + '%',
+      progressFill: { position:'absolute', top:0, bottom:0, left:0, width: (pre ? 0.6 : kmDone / TOTAL_KM * 100) + '%', background:'#ec3013', transition:'width .4s' },
+
+      filters, dispatches, shownCount: shown.length, maxDay: S.maxDay,
+      onMaxDay: e => this.setState({ maxDay: +e.target.value }),
+
+      kit: Component.KIT,
+      kitHead: { display:'grid', gridTemplateColumns: narrow ? '1fr 1fr' : '200px 1fr 100px 1.4fr',
+        borderTop:'2px solid var(--k-rule)', borderBottom:'1px solid var(--k-hair)',
+        font:"500 9px/1 'Archivo'", letterSpacing:'.2em', textTransform:'uppercase', color:'var(--k-muted)' },
+      kitRow: { display:'grid', gridTemplateColumns: narrow ? '1fr 1fr' : '200px 1fr 100px 1.4fr',
+        borderBottom:'1px solid var(--k-hair)', alignItems:'baseline' },
+
+      press: Component.PRESS,
+      pressRow: { display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:'16px',
+        padding:'16px 0', borderBottom:'1px solid var(--k-hair)', textDecoration:'none', color:'var(--k-ink)' },
+
+      tiers, faq,
+      newsPad: '',
+      email: S.email,
+      onEmail: e => this.setState({ email: e.target.value }),
+      subscribe: () => this.setState({ subbed: true }),
+      subMsg: S.subbed ? 'Subscribed. One dispatch a week, starting 1 December.' : 'No other mail. Unsubscribe in one click.',
+      subMsgStyle: { font:"400 12px/1.4 'Archivo'", color: S.subbed ? 'var(--k-accent-text)' : 'var(--k-faint)', marginTop:'12px' }
+    };
+  }
+}
+</script>
+</body>
+</html>
