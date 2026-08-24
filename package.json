@@ -1,0 +1,8 @@
+{
+  "name": "k2k-navneet",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "11.0.1"
+  }
+}
