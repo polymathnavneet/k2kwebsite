@@ -1,0 +1,9 @@
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/location"
+  to = "/.netlify/functions/location"
+  status = 200
+  force = true
