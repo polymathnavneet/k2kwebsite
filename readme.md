@@ -1,54 +1,60 @@
-# K2K · Navneet walks India
+# K2K · Navneet
 
-This repository powers Navneet's public K2K project website.
+Kanyakumari → Kashmir on foot.
 
 ## Project
 
-**K2K** is a planned Kanyakumari-to-Kashmir walk beginning **1 December 2026**. The working distance is approximately **4,000 km**, with an expected duration of **4–6 months**.
+Navneet is preparing to walk approximately 4,000 km from Kanyakumari to Kashmir, beginning 1 December 2026. The current planning window is 4–6 months.
 
-The walk is designed as an endurance challenge and a long-form storytelling project. Planned documentation includes:
+The expedition combines endurance, travel, field writing, photography, video and conversations with people along the route.
 
-- 300+ short-form videos / reels
-- YouTube and longer documentary-style videos
-- Thousands of photographs
-- Dozens of local conversations and interviews
-- Regular written field notes and articles
-- A final book about the journey
+## Site
 
-## Current preparation
-
-Navneet is currently preparing in Lucknow, Uttar Pradesh. The public tracker therefore uses Lucknow as the preparation marker until the expedition starts.
-
-## Website pages
-
-- `index.html` — project homepage
+- `index.html` — project home and mission
 - `about.html` — Navneet and the story behind K2K
-- `route.html` — working route corridor and route-record table
-- `expedition.html` — duration, daily life, gear, budget, documentation and safety planning
-- `tracker.html` — India map, Kanyakumari-to-Kashmir route line, Lucknow marker and browser GPS mode
-- `journal.html` — field-journal structure and future dispatches
-- `sponsorship.html` — ₹2 lakh working sponsorship target, budget allocation and partnership enquiry form
-- `styles.css` — shared visual system and responsive layout
+- `route.html` — dated working route and checkpoint calendar
+- `expedition.html` — practical expedition plan
+- `tracker.html` — public live GPS map
+- `tracker-admin.html` — private phone GPS broadcaster
+- `journal.html` — journey notes
+- `press.html` — media facts and enquiry form
+- `join.html` — public messages, dreams and recommendations
+- `sponsorship.html` — partnership proposal and enquiry form
 
-## Tracker note
+## Live GPS architecture
 
-The public tracker currently displays Lucknow. The browser GPS mode can read the device's location after permission is granted and move the marker during that browser session.
+The tracker uses Netlify Functions + Netlify Blobs.
 
-A truly public remote tracker, where a phone publishes its live position and every visitor sees the same changing location, requires a location-publishing backend. That has intentionally not been faked with a static marker.
+1. Navneet opens `/tracker-admin.html` on the phone.
+2. The phone requests browser GPS permission.
+3. The page sends the latest coordinates every 30 seconds to `/api/location`.
+4. The Netlify Function checks the private `K2K_TRACKER_TOKEN` environment variable.
+5. The latest point is stored in the `k2k-tracker` Netlify Blobs store.
+6. The public `/tracker.html` page reads `/api/location` every 15 seconds.
+7. Before the first live update, the API returns Lucknow as the preparation marker.
 
-## Sponsorship
+### One-time Netlify setup
 
-The current working target is **₹2,00,000**. The site uses a planning model of:
+In Netlify, open **Project configuration → Environment variables** and add:
 
-- ₹45,000 food
-- ₹55,000 gear
-- ₹20,000 safety
-- ₹30,000 documentation
-- ₹25,000 logistics
-- ₹25,000 contingency
+- Key: `K2K_TRACKER_TOKEN`
+- Value: a long private token you choose
+- Scope: Functions/runtime
 
-These are planning figures and can change after final quotations and route planning.
+Then redeploy the site.
 
-## Deployment
+Do **not** put the token in GitHub.
 
-The site is static HTML/CSS/JavaScript and can be deployed directly from the `main` branch on Netlify. The sponsorship form uses Netlify Forms markup.
+On the phone, open `/tracker-admin.html`, paste the token once, save it, and press **Start live GPS**.
+
+## Forms
+
+Sponsorship, media and Join K2K submissions use Netlify Forms. Submissions appear in the site's Netlify Forms area after form detection is enabled and a deploy containing the forms has completed.
+
+## Route dates
+
+The dates shown on the website are planning estimates. The working assumption is roughly 28 km per walking day. Weather, rest, road safety, accommodation and route changes can move the dates.
+
+## Design direction
+
+The site uses a flat, editorial expedition style: strong typography, rules, maps, dates, route checkpoints, live tracking, community participation, media information and partnership storytelling. The information architecture takes inspiration from modern expedition campaign sites while using original K2K content and structure.
