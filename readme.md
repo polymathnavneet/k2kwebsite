@@ -57,6 +57,17 @@ The homepage is a dynamic preparation/live expedition dashboard. It reads public
 - The control room refreshes automatically every 60 seconds.
 - `/community.html` collects route recommendations, documentary leads, questions and offers of practical help through a moderated Netlify form.
 
+### Low-bandwidth field workflow
+
+`/journey-admin.html` is designed as the daily field interface:
+
+1. Save the private token once on the walking phone.
+2. Tap a status preset such as Walking, Resting, Eating or Filming.
+3. Enter day and distance; use the GPS button when publishing location.
+4. Tap Publish. Failed updates stay in a local queue and send automatically when connectivity returns.
+
+The dashboard, publisher and `/games.html` register `service-worker.js` so their core files remain available after the first successful load. The games and personal best scores work entirely on-device. Community cheer/follow reactions also queue locally when offline.
+
 ## Forms
 
 Sponsorship, media and Join K2K submissions use Netlify Forms. Submissions appear in the site's Netlify Forms area after form detection is enabled and a deploy containing the forms has completed.
