@@ -9,6 +9,7 @@
   <meta property="og:description" content="A live 4,000 km walk across India, from Kanyakumari to Kashmir.">
   <meta property="og:type" content="website">
   <title>K2K Expedition Dashboard | Navneet</title>
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
@@ -20,7 +21,7 @@
     <a class="dash-brand" href="index.html" aria-label="K2K Expedition home"><b>K2K</b><span>EXPEDITION<br>DASHBOARD</span></a>
     <div class="dash-live" aria-live="polite"><i></i><span id="headerStatus">PREPARATION</span></div>
     <button class="dash-menu-button" type="button" aria-expanded="false" aria-controls="dashboardNav"><span></span><span></span><span></span><b>Menu</b></button>
-    <nav id="dashboardNav" aria-label="Main navigation"><a class="active" href="index.html">Dashboard</a><a href="live-track.html">Live map</a><a href="route.html">Route</a><a href="journal.html">Journal</a><a href="community.html">Community</a><a href="about.html">About</a><a class="support-link" href="sponsorship.html">Support</a></nav>
+    <nav id="dashboardNav" aria-label="Main navigation"><a class="active" href="index.html">Dashboard</a><a href="live-track.html">Live map</a><a href="route.html">Route</a><a href="journal.html">Journal</a><a href="games.html">Games</a><a href="community.html">Community</a><a href="about.html">About</a><a class="support-link" href="sponsorship.html">Support</a></nav>
   </header>
 
   <main id="dashboardMain">
@@ -54,11 +55,13 @@
       <aside class="today-panel"><div class="panel-heading"><span>02 · TODAY IN THE FIELD</span></div><dl><div><dt>Last slept</dt><dd id="lastSleep">Lucknow</dd></div><div><dt>Phone battery</dt><dd id="battery">—</dd></div><div><dt>Last GPS</dt><dd id="lastGps">Not started</dd></div><div><dt>Today's partner</dt><dd><a id="partnerLink" href="sponsorship.html"><span id="partnerName">Partnership open</span> ↗</a></dd></div></dl></aside>
     </section>
 
-    <section class="road-actions"><div class="shell"><div><span>03 · THE ROAD IS COLLABORATIVE</span><h2>Know something<br>ahead of me?</h2></div><div class="action-grid"><a href="community.html"><b>01</b><strong>Suggest a place</strong><span>A road, meal or local secret →</span></a><a href="community.html"><b>02</b><strong>Share a story</strong><span>A person worth meeting →</span></a><a href="community.html"><b>03</b><strong>Offer support</strong><span>Water, power, food or stay →</span></a><a href="sponsorship.html"><b>04</b><strong>Back the walk</strong><span>Partner with the expedition →</span></a></div></div></section>
+    <section class="response-panel shell"><div><span>03 · SEND A SIGNAL</span><h2>Respond to the road.</h2><p>Your action is saved on this device, so even a weak connection does not make the interface feel dead.</p></div><div class="response-buttons"><button type="button" data-response="cheer">👏 Cheer today</button><button type="button" data-response="follow">＋ Follow K2K</button><button type="button" data-share>↗ Share journey</button><a href="games.html">◆ Play road games</a></div><p id="responseMessage" class="response-message" role="status" aria-live="polite"></p></section>
+    <section class="road-actions"><div class="shell"><div><span>04 · THE ROAD IS COLLABORATIVE</span><h2>Know something<br>ahead of me?</h2></div><div class="action-grid"><a href="community.html"><b>01</b><strong>Suggest a place</strong><span>A road, meal or local secret →</span></a><a href="community.html"><b>02</b><strong>Share a story</strong><span>A person worth meeting →</span></a><a href="community.html"><b>03</b><strong>Offer support</strong><span>Water, power, food or stay →</span></a><a href="sponsorship.html"><b>04</b><strong>Back the walk</strong><span>Partner with the expedition →</span></a></div></div></section>
   </main>
 
   <footer class="dash-footer"><strong>K2K · NAVNEET</strong><span>India at walking speed.</span><div><a href="press.html">Press</a><a href="about.html">About</a><a href="sponsorship.html">Support</a></div></footer>
-  <nav class="mobile-dock" aria-label="Mobile navigation"><a class="active" href="index.html"><b>⌂</b><span>Dashboard</span></a><a href="live-track.html"><b>⌖</b><span>Live</span></a><a href="journal.html"><b>▤</b><span>Journal</span></a><a href="community.html"><b>＋</b><span>Join</span></a></nav>
-  <script src="journey-data.js"></script><script src="dashboard.js"></script>
+  <nav class="mobile-dock" aria-label="Mobile navigation"><a class="active" href="index.html"><b>⌂</b><span>Dashboard</span></a><a href="live-track.html"><b>⌖</b><span>Live</span></a><a href="games.html"><b>◆</b><span>Games</span></a><a href="community.html"><b>＋</b><span>Join</span></a></nav>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="journey-data.js"></script><script src="dashboard.js"></script><script src="interactions.js"></script><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/service-worker.js');</script>
 </body>
 </html>
