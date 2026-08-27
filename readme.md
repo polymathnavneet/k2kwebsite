@@ -47,6 +47,16 @@ Do **not** put the token in GitHub.
 
 On the phone, open `/tracker-admin.html`, paste the token once, save it, and press **Start live GPS**.
 
+## Journey control room
+
+The homepage is a dynamic preparation/live expedition dashboard. It reads public state from `/api/journey` and falls back to `journey-data.js` when the backend is unavailable.
+
+- Open `/journey-admin.html` privately on the phone to publish status, distance, steps, field conditions, the next stop, latest dispatch and partner of the day.
+- The publisher uses the existing `K2K_TRACKER_TOKEN`; the token is stored only in that browser's local storage and sent as a request header.
+- Public data is stored in the `k2k-journey` Netlify Blobs store.
+- The control room refreshes automatically every 60 seconds.
+- `/community.html` collects route recommendations, documentary leads, questions and offers of practical help through a moderated Netlify form.
+
 ## Forms
 
 Sponsorship, media and Join K2K submissions use Netlify Forms. Submissions appear in the site's Netlify Forms area after form detection is enabled and a deploy containing the forms has completed.
