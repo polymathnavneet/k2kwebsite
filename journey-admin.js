@@ -1,0 +1,9 @@
+(function(){
+  const sheet=document.createElement('link');sheet.rel='stylesheet';sheet.href='control-room.css';document.head.appendChild(sheet);
+  const ids=['mode','status','day','currentPlace','distanceToday','distanceTotal','stepsToday','walkingMinutes','temperature','altitude','battery','connectivity','lastSleep','nextPlace','nextPlaceEta','sponsorName','latestTitle','latestText','latestUrl'];
+  const form=document.getElementById('journeyForm');const status=document.getElementById('publisherStatus');const token=document.getElementById('token');token.value=localStorage.getItem('k2kPublisherToken')||'';
+  function fill(data){ids.forEach(id=>{const input=document.getElementById(id);if(input&&data[id]!=null)input.value=data[id]})}
+  async function load(){status.textContent='Loading current journey…';try{const response=await fetch('/api/journey',{cache:'no-store'});if(!response.ok)throw new Error('Could not load');fill(await response.json());status.textContent='Current journey loaded.'}catch(error){fill(window.K2K_FALLBACK||{});status.textContent='Backend unavailable here. Loaded preparation defaults.'}}
+  document.getElementById('loadCurrent').addEventListener('click',load);
+  form.addEventListener('submit',async event=>{event.preventDefault();localStorage.setItem('k2kPublisherToken',token.value);const data={};ids.forEach(id=>data[id]=document.getElementById(id).value);status.textContent='Publishing…';try{const response=await fetch('/api/journey',{method:'POST',headers:{'content-type':'application/json','x-tracker-token':token.value},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw new Error(result.error||'Publish failed');status.textContent=`Published at ${new Date(result.journey.updatedAt).toLocaleString('en-IN')}.`}catch(error){status.textContent=error.message}});load();
+})();
