@@ -1,24 +1,64 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Follow Navneet's Kanyakumari to Kashmir walk live: location, distance, field stories, people and progress across India.">
-  <meta name="theme-color" content="#e33a19"><meta property="og:title" content="K2K Control Room · Navneet walks India"><meta property="og:description" content="India at walking speed—live progress, field stories and a 4,000 km road north."><meta property="og:type" content="website">
-  <title>K2K Control Room | Navneet Walks India</title><link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Follow Navneet's Kanyakumari to Kashmir walk live: map, location, distance and field stories.">
+  <meta name="theme-color" content="#111312">
+  <meta property="og:title" content="K2K Expedition Dashboard">
+  <meta property="og:description" content="A live 4,000 km walk across India, from Kanyakumari to Kashmir.">
+  <meta property="og:type" content="website">
+  <title>K2K Expedition Dashboard | Navneet</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
-<body class="control-room-page">
-  <a class="skip-link" href="#main">Skip to the journey</a>
-  <div class="ticker" role="status"><span class="live-dot"></span><strong id="roomMode">PREPARATION MODE</strong><span id="roomStatus">Preparing</span><span class="muted" id="roomUpdated">Live publishing begins on day one</span></div>
-  <header class="nav"><a class="brand" href="index.html" aria-label="K2K home">K2K<span></span></a><button class="menu-toggle" type="button" aria-expanded="false" aria-controls="siteNav">Menu</button><nav id="siteNav" aria-label="Main navigation"><a class="active" href="index.html">Control room</a><a href="about.html">Navneet</a><a href="route.html">Route</a><a href="journal.html">Stories</a><a href="community.html">Community</a><a href="press.html">Press</a><a href="sponsorship.html" class="nav-cta">Support</a></nav></header>
-  <main id="main">
-    <section class="room-hero shell"><div><div class="eyebrow"><span id="roomDay">Before day one</span> · <span id="roomPlace">Lucknow, Uttar Pradesh</span></div><h1>India at<br><em>walking speed.</em></h1><p>One person. One road north. A living documentary built from every kilometre, conversation and quiet moment between Kanyakumari and Kashmir.</p><div class="actions"><a class="button" href="live-track.html">Open live map</a><a class="button secondary" href="community.html">Join the journey</a></div></div><aside class="now-card" aria-label="Current journey status"><small>RIGHT NOW</small><strong id="roomStatusCard">Preparing</strong><div class="now-place"><span>Current place</span><b id="roomPlaceCard">Lucknow</b></div><a href="live-track.html">See exact journey status →</a></aside></section>
-    <section class="metric-strip" aria-label="Today's journey statistics"><article><small>Today</small><strong id="roomDistanceToday">0 km</strong><span>distance</span></article><article><small>Total</small><strong id="roomDistanceTotal">0 km</strong><span>of 4,000 km</span></article><article><small>Steps</small><strong id="roomSteps">0</strong><span>today</span></article><article><small>Moving</small><strong id="roomWalkingTime">0 min</strong><span>walking time</span></article></section>
-    <section class="shell road-progress-section"><div class="section-head"><div><div class="section-label">01 · The road north</div><h2>The map changes only where I walk.</h2></div><a class="text-link" href="route.html">Explore the full route →</a></div><div class="road-map" aria-label="Conceptual map showing journey progress from Kanyakumari to Kashmir"><svg viewBox="0 0 420 620" role="img" aria-labelledby="indiaMapTitle"><title id="indiaMapTitle">K2K progress map of India</title><path class="india-shape" d="M153 26l69 15 53 44 12 61 37 50-12 61 24 57-47 63-15 70-45 94-37 60-28-72-36-58-9-70-45-52 22-62-31-67 52-58-3-67 59-73z"/><path class="route-base" d="M193 552 C170 475 235 434 203 362 C178 306 252 260 225 201 C207 159 239 111 223 65"/><path class="route-walked" id="routeWalked" d="M193 552 C170 475 235 434 203 362 C178 306 252 260 225 201 C207 159 239 111 223 65" pathLength="100"/><circle class="route-start" cx="193" cy="552" r="7"/><circle class="route-finish" cx="223" cy="65" r="7"/></svg><div class="map-copy"><span>KANYAKUMARI · START</span><strong id="progressText">0.0% of the road walked</strong><span>KASHMIR · FINISH</span></div></div><div class="progress room-progress" role="progressbar" aria-label="Journey completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="journeyProgress"></span></div></section>
-    <section class="field-grid shell"><div class="field-primary"><div class="section-label">02 · Latest from the road</div><article class="latest-dispatch"><small>FIELD DISPATCH</small><h2 id="latestTitle">The walk before the walk</h2><p id="latestText">Training, saving, finding partners and preparing to cross India at walking speed.</p><a class="button" id="latestLink" href="journal.html">Open latest story</a></article></div><aside class="field-signals" aria-label="Live field signals"><div><small>Weather</small><strong id="roomWeather">Waiting for live data</strong></div><div><small>Altitude</small><strong id="roomAltitude">—</strong></div><div><small>Phone battery</small><strong id="roomBattery">—</strong></div><div><small>Connection</small><strong id="roomConnection">Preparation mode</strong></div><div><small>Last slept</small><strong id="roomSleep">Lucknow</strong></div><div><small>Next major stop</small><strong id="roomNext">Kanyakumari</strong><span id="roomEta">December 2026</span></div></aside></section>
-    <section class="stories-band"><div class="shell"><div class="section-head"><div><div class="section-label">03 · Story map</div><h2>Every pin holds a human story.</h2></div><p>Open the places already crossed. Each capsule can hold a photograph, film, conversation or field note.</p></div><div id="storyCapsules" class="story-capsules"></div></div></section>
-    <section class="community-preview shell"><div><div class="section-label">04 · The road is collaborative</div><h2>Leave something ahead of me.</h2><p>Suggest a person, place or story. Offer water, a meal, charging or a safe place to rest. Ask a question for the road. Your message can become part of the documentary.</p><a class="button" href="community.html">Add to the road</a></div><div class="community-options"><article><b>01</b><strong>Suggest</strong><span>A person, place or untold story</span></article><article><b>02</b><strong>Support</strong><span>Food, stay, water, power or local help</span></article><article><b>03</b><strong>Ask</strong><span>A question to carry across India</span></article><article><b>04</b><strong>Sponsor</strong><span>A kilometre, walking day or expedition need</span></article></div></section>
-    <section class="support-band"><div class="shell support-inner"><div><div class="section-label">05 · Today's partner</div><h2 id="roomSponsor">Partnership open</h2><p>Help keep the tracker, camera and walker moving. Partnerships can support a day, a need, a field story or the full expedition.</p></div><a class="button" id="sponsorOfDay" href="sponsorship.html">Support K2K</a></div></section>
+<body class="dashboard-page">
+  <a class="skip-link" href="#dashboardMain">Skip to dashboard</a>
+  <header class="dash-header">
+    <a class="dash-brand" href="index.html" aria-label="K2K Expedition home"><b>K2K</b><span>EXPEDITION<br>DASHBOARD</span></a>
+    <div class="dash-live" aria-live="polite"><i></i><span id="headerStatus">PREPARATION</span></div>
+    <button class="dash-menu-button" type="button" aria-expanded="false" aria-controls="dashboardNav"><span></span><span></span><span></span><b>Menu</b></button>
+    <nav id="dashboardNav" aria-label="Main navigation"><a class="active" href="index.html">Dashboard</a><a href="live-track.html">Live map</a><a href="route.html">Route</a><a href="journal.html">Journal</a><a href="community.html">Community</a><a href="about.html">About</a><a class="support-link" href="sponsorship.html">Support</a></nav>
+  </header>
+
+  <main id="dashboardMain">
+    <section class="map-dashboard" aria-label="Live K2K expedition map and status">
+      <div id="expeditionMap" class="expedition-map"></div>
+      <div class="map-shade"></div>
+      <div class="map-status"><span><i></i><b id="mapMode">PREPARATION MODE</b></span><small id="mapUpdated">Live GPS begins on day one</small></div>
+      <div class="map-title"><span>KANYAKUMARI → KASHMIR</span><h1 id="currentPlace">Lucknow,<br>Uttar Pradesh</h1><p id="journeyLine">Preparing to walk India from south to north.</p></div>
+      <button class="map-locate" id="mapLocate" type="button" aria-label="Centre current position">⌖</button>
+      <div class="map-key" aria-label="Map legend"><span><i class="walked"></i>Walked</span><span><i class="planned"></i>Planned</span><span><i class="current"></i>Current</span></div>
+    </section>
+
+    <section class="primary-metrics" aria-label="Expedition progress">
+      <article><small>DAY</small><strong id="dayNumber">—</strong><span id="dayLabel">Before start</span></article>
+      <article><small>TOTAL DISTANCE</small><strong><span id="totalDistance">0</span><em> km</em></strong><span>of <span id="targetDistance">4,000</span> km</span></article>
+      <article><small>PROGRESS</small><strong id="completion">0%</strong><span class="micro-progress"><i id="completionBar"></i></span></article>
+      <article><small>TODAY</small><strong><span id="todayDistance">0</span><em> km</em></strong><span id="walkingTime">0 min walking</span></article>
+    </section>
+
+    <section class="signal-strip" aria-label="Live field signals">
+      <article><small>STATUS</small><strong id="fieldStatus">Preparing</strong></article>
+      <article><small>STEPS</small><strong id="steps">0</strong></article>
+      <article><small>WEATHER</small><strong id="weather">Awaiting data</strong></article>
+      <article><small>ELEVATION</small><strong id="altitude">—</strong></article>
+      <article><small>SIGNAL</small><strong id="connectivity">Preparation</strong></article>
+      <article><small>NEXT STOP</small><strong id="nextStop">Kanyakumari</strong><span id="nextEta">December 2026</span></article>
+    </section>
+
+    <section class="dashboard-content shell">
+      <div class="dispatch-panel"><div class="panel-heading"><span>01 · LATEST FIELD SIGNAL</span><a href="journal.html">All stories →</a></div><article><div class="dispatch-index">FIELD<br>NOTE</div><div><small id="dispatchPlace">LUCKNOW · PREPARATION</small><h2 id="latestTitle">The walk before the walk.</h2><p id="latestText">Training, saving, finding partners and preparing to cross India at walking speed.</p><a class="text-link" id="latestLink" href="journal.html">Read the dispatch →</a></div></article></div>
+      <aside class="today-panel"><div class="panel-heading"><span>02 · TODAY IN THE FIELD</span></div><dl><div><dt>Last slept</dt><dd id="lastSleep">Lucknow</dd></div><div><dt>Phone battery</dt><dd id="battery">—</dd></div><div><dt>Last GPS</dt><dd id="lastGps">Not started</dd></div><div><dt>Today's partner</dt><dd><a id="partnerLink" href="sponsorship.html"><span id="partnerName">Partnership open</span> ↗</a></dd></div></dl></aside>
+    </section>
+
+    <section class="road-actions"><div class="shell"><div><span>03 · THE ROAD IS COLLABORATIVE</span><h2>Know something<br>ahead of me?</h2></div><div class="action-grid"><a href="community.html"><b>01</b><strong>Suggest a place</strong><span>A road, meal or local secret →</span></a><a href="community.html"><b>02</b><strong>Share a story</strong><span>A person worth meeting →</span></a><a href="community.html"><b>03</b><strong>Offer support</strong><span>Water, power, food or stay →</span></a><a href="sponsorship.html"><b>04</b><strong>Back the walk</strong><span>Partner with the expedition →</span></a></div></div></section>
   </main>
-  <footer class="footer shell"><div><strong>K2K · NAVNEET</strong><p>Kanyakumari → Kashmir on foot · a living documentary.</p></div><div class="footer-links"><a href="about.html">About</a><a href="route.html">Route</a><a href="live-track.html">Tracker</a><a href="community.html">Community</a><a href="sponsorship.html">Support</a></div><small>© 2026 Navneet</small></footer>
-  <script src="journey-data.js"></script><script src="control-room.js"></script><script src="site.js"></script><script>new MutationObserver(()=>{const status=document.getElementById('roomStatus');const place=document.getElementById('roomPlace');document.getElementById('roomStatusCard').textContent=status.textContent;document.getElementById('roomPlaceCard').textContent=place.textContent;const width=parseFloat(document.getElementById('journeyProgress').style.width)||0;document.getElementById('routeWalked').style.strokeDasharray=`${width} 100`;}).observe(document.body,{subtree:true,childList:true,characterData:true});</script>
-</body></html>
+
+  <footer class="dash-footer"><strong>K2K · NAVNEET</strong><span>India at walking speed.</span><div><a href="press.html">Press</a><a href="about.html">About</a><a href="sponsorship.html">Support</a></div></footer>
+  <nav class="mobile-dock" aria-label="Mobile navigation"><a class="active" href="index.html"><b>⌂</b><span>Dashboard</span></a><a href="live-track.html"><b>⌖</b><span>Live</span></a><a href="journal.html"><b>▤</b><span>Journal</span></a><a href="community.html"><b>＋</b><span>Join</span></a></nav>
+  <script src="journey-data.js"></script><script src="dashboard.js"></script>
+</body>
+</html>
