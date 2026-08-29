@@ -72,7 +72,13 @@ export async function POST(request: Request) {
   // and that still lands in the admin sheet where it can be released.
   const spam = /(https?:\/\/.*){2,}|casino|crypto giveaway|viagra/i.test(message);
   const status = spam ? "held" : "public";
-  const id = crypto.randomUUID();
+  // A send that timed out but actually arrived is retried from the outbox with
+  // the same clientId. Using it as the row id makes the retry a no-op instead
+  // of a second copy of somebody's message.
+  const supplied = clean(body.clientId, 80);
+  const id = /^[A-Za-z0-9_-]{8,80}$/.test(supplied) ? supplied : crypto.randomUUID();
+  const [seen] = await db.select({ id: messages.id }).from(messages).where(eq(messages.id, id)).limit(1);
+  if (seen) return Response.json({ ok: true, id, duplicate: true, public: true });
   const createdAt = new Date().toISOString();
   await db.insert(messages).values({ id, type, name, contact, place, message, status, createdAt });
 

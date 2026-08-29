@@ -159,3 +159,63 @@
 .ask-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
 .ask-actions button{border-radius:0;flex:1;min-height:46px}
 .assistant-skip{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;padding:11px;min-height:44px;border:0;background:none;font-size:12px;font-weight:700;opacity:.6}
+
+.assistant-chat{display:flex;gap:8px;padding:11px 13px;border-top:1px solid var(--ink);background:var(--paper-2)}
+.assistant-chat input{flex:1;border:1px solid var(--ink);border-radius:0;background:#fff;min-height:46px;font-size:16px}
+.assistant-chat button{border-radius:0;min-height:46px;flex:none}
+
+/* ============================================================================
+   Phone-first corrections.
+   Kept as one block at the end so each change is visible and reversible,
+   rather than scattered through the rules above.
+   ========================================================================== */
+
+/* Small red text failed contrast at 3.42:1 against the paper background, below
+   the 4.5:1 needed for normal text. --red stays the brand fill for large areas
+   and white-on-red; --red-ink is the same family, darkened to 4.78:1, and is
+   what small text uses. */
+:root{--red-ink:#c3341a}
+.section-tag,.choice-list b,.door-grid b,.message-card>div:first-child b,.stop-list article b,
+.dispatch-card small,.book-promo .section-tag,.media-item figcaption span,.assistant .ask-detail b,
+.today-head b,.status-chip.public,.form-status,.row-note{color:var(--red-ink)}
+.form-status{color:#1f6b3a}
+.form-status.error{color:var(--red-ink)}
+
+/* Labels were 7-9px, which is unreadable in daylight on a road. Nothing drops
+   below 11px, and body copy sits at 16px so iOS does not zoom on focus. */
+.section-tag,.metric-grid small,.signal-grid small,.route-summary small,.progress-strip small,
+.stop-list article span,.message-card>div:first-child,.door-grid b,.door-grid span,
+.book-cover span,.map-copy>div:last-child>p,.status-line,.site-header nav a,
+.wall-filters button,.admin-tabs button,.games [data-slot="tabs-trigger"],
+.tap-group small,.assistant-head span,.admin-table th,.admin-table td:before,
+.road-form label,.book-form label,.admin-form-grid label,.route-controls label,.route-editor label,
+.mobile-dock a,.site-footer,.map-legend span{font-size:11px}
+.metric-grid article>span,.admin-table td,.assistant-thread .line,.ask-detail{font-size:13px}
+input,textarea,select{font-size:16px}
+
+/* Anything tapped is at least 44x44, the smallest reliable target on a phone. */
+.site-header nav a,.wall-filters button,.admin-tabs button,.games [data-slot="tabs-trigger"],
+.mobile-dock a,.route-buttons button,.memory-grid button,.status-presets button,
+.table-actions button,.stop-actions button,.menu-button,.locate-button,
+.site-footer nav a,.ig-link,.tap{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.site-header nav a,.site-footer nav a{padding-inline:12px}
+.wall-filters button{min-width:96px}
+
+/* The editorial headings ate the whole first screen, pushing the map and the
+   messages below the fold on a phone. They stay large on a laptop. */
+@media(max-width:699px){
+  .page-hero{padding-block:26px 22px}
+  .page-hero h1{font-size:clamp(38px,12vw,60px);line-height:.92;margin:10px 0 12px;overflow-wrap:break-word;hyphens:auto}
+  .page-hero p{font-size:15px}
+  .dashboard-hero{min-height:0;height:auto}
+  .map-copy h1{font-size:clamp(34px,10vw,52px)}
+  .route-live-grid{padding-block:18px}
+  .message-list,.media-wall,.journal-list,.choice-list{padding-block:20px 70px}
+  /* The dock exists only on the dashboard, so only leave room for it there. */
+  .offline-bar{bottom:0}
+  .dashboard-page .offline-bar{bottom:66px}
+}
+
+/* A long word in a heading could push the page sideways at 320px. */
+h1,h2,h3{overflow-wrap:break-word}
+body{overflow-x:hidden}

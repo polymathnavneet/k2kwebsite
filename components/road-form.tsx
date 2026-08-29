@@ -1,38 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { send } from "@/lib/outbox";
 
 type Kind = "place" | "story" | "support" | "question";
 
 export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind: Kind; placeLabel: string; messageLabel: string; buttonLabel: string }) {
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
-  const queueKey = "alw-message-queue";
-
-  async function send(payload: Record<string, unknown>) {
-    const response = await fetch("/api/messages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-    const result = await response.json() as { error?: string; public?: boolean };
-    if (!response.ok) throw new Error(result.error || "Could not send");
-    return result;
-  }
-
-  useEffect(() => {
-    const flush = async () => {
-      if (!navigator.onLine) return;
-      const queue = JSON.parse(localStorage.getItem(queueKey) || "[]") as Record<string, unknown>[];
-      while (queue.length) {
-        try { await send(queue[0]); queue.shift(); localStorage.setItem(queueKey, JSON.stringify(queue)); }
-        catch { return; }
-      }
-      localStorage.removeItem(queueKey);
-    };
-    flush();
-    addEventListener("online", flush);
-    return () => removeEventListener("online", flush);
-  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,18 +20,15 @@ export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind
     const values = Object.fromEntries(new FormData(form));
     const payload = { type: kind, name: values.name, contact: values.contact, place: values.place, message: values.message };
     try {
-      const result = await send(payload);
+      const outcome = await send("/api/messages", payload, "your message to the wall");
       form.reset();
-      setStatus(result.public
-        ? "Published. It is on the public wall now."
-        : "Received. This one needs a quick check before it appears publicly.");
+      setStatus(outcome.sent
+        ? ((outcome.result as { public?: boolean })?.public
+            ? "Published. It is on the public wall now."
+            : "Received. This one needs a quick check before it appears publicly.")
+        : "No signal — saved on this phone. It will post itself when you are back online.");
     } catch (error) {
-      if (!navigator.onLine) {
-        const queue = JSON.parse(localStorage.getItem(queueKey) || "[]");
-        queue.push(payload);
-        localStorage.setItem(queueKey, JSON.stringify(queue.slice(-20)));
-        setStatus("Saved on this phone. It will send when your signal returns.");
-      } else setStatus(error instanceof Error ? error.message : "Could not send");
+      setStatus(error instanceof Error ? error.message : "Could not send");
     } finally { setSending(false); }
   }
 
