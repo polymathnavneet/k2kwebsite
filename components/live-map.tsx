@@ -24,6 +24,8 @@ type LeafletMap = {
   setMinZoom: (zoom: number) => void;
   zoomIn: () => void;
   zoomOut: () => void;
+  dragging: { enable: () => void; disable: () => void };
+  scrollWheelZoom: { enable: () => void; disable: () => void };
   remove: () => void;
   invalidateSize: () => void;
   getZoom: () => number;
@@ -90,6 +92,7 @@ export function LiveMap({ stops, journey, compact = false }: { stops: RouteStop[
   const touchedRef = useRef(false);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  const [engaged, setEngaged] = useState(false);
 
   // Create the map once.
   useEffect(() => {
@@ -99,7 +102,12 @@ export function LiveMap({ stops, journey, compact = false }: { stops: RouteStop[
       if (!L || !holder.current) { setFailed(true); return; }
 
       leafletRef.current = L;
-      const map = L.map(holder.current, { scrollWheelZoom: !compact, zoomControl: false });
+      // Nothing that competes with reading the page. A map that fills the
+      // screen and answers a swipe by panning itself leaves no way to scroll
+      // past it - the finger is always on the map. Dragging is switched on the
+      // moment the reader asks for it, and not before. Pinch-zoom stays on
+      // throughout: it takes two fingers, so it can never swallow a scroll.
+      const map = L.map(holder.current, { dragging: false, scrollWheelZoom: false, zoomControl: false });
       map.setView([22.5, 79], 5);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 18,
@@ -217,10 +225,29 @@ export function LiveMap({ stops, journey, compact = false }: { stops: RouteStop[
   // stop re-framing itself from under them.
   const hold = () => { touchedRef.current = true; };
 
+  // Hand the map over. Until this, a swipe scrolls the page like any other part
+  // of it; afterwards the map is the reader's to drag.
+  //
+  // The homepage map is never handed over. It sits behind the headline as a
+  // backdrop, so an invitation to drag it would be an invitation printed across
+  // the title - and dragging it is what made the page impossible to scroll past
+  // in the first place. Its zoom and locate buttons still work.
+  function engage() {
+    hold();
+    setEngaged(true);
+    mapRef.current?.dragging.enable();
+    mapRef.current?.scrollWheelZoom.enable();
+  }
+
   return (
     <div className={compact ? "live-map compact" : "live-map"}>
       <div ref={holder} className="live-map-canvas" />
       {!ready && <div className="live-map-loading">Loading the map…</div>}
+      {ready && !engaged && !compact && (
+        <button className="map-engage" type="button" onClick={engage}>
+          <span>Tap to move the map</span>
+        </button>
+      )}
       <div className="map-controls">
         <button type="button" aria-label="Zoom in" onClick={() => { hold(); mapRef.current?.zoomIn(); }}>+</button>
         <button type="button" aria-label="Zoom out" onClick={() => { hold(); mapRef.current?.zoomOut(); }}>−</button>
