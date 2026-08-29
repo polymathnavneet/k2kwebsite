@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, LocateFixed, Share2 } from "lucide-react";
+import { Check, Share2 } from "lucide-react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, livePace } from "@/lib/geo";
+import { onCourse, positioned } from "@/lib/position";
 import { formatWalkDate, istNoon, walkDay } from "@/lib/time";
 import { LiveMap } from "./live-map";
 
@@ -14,20 +15,25 @@ export function Dashboard() {
   const { journey, route } = useLiveJourney();
   const [notice, setNotice] = useState("");
 
-  // Progress and the next stop follow the position along the route, not the
-  // raw distance walked. On a detour those differ, and the raw figure would
-  // claim towns had been passed that are still ahead.
+  // Three separate questions, and conflating them is what made the tracker lie.
+  //
+  //   live     - has the walk been announced as begun? Wording only.
+  //   fix      - is there a real position from the phone, or the placeholder?
+  //   tracking - is that position near enough the route for "next stop" to mean
+  //              anything? Standing 200 km away in Bihar, it does not, and the
+  //              old code answered "Nagercoil, 22 km" rather than admitting it.
+  //
+  // Progress follows the position along the route, not the raw distance walked.
+  // On a detour those differ, and the raw figure would claim towns had been
+  // passed that are still ahead.
   const live = journey.mode === "live";
-  const along = live ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
+  const fix = positioned(journey);
+  const tracking = onCourse(journey);
+  const along = tracking ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
 
-  /**
-   * Before the walk starts there is no "next stop", because no stop has been
-   * left behind. Showing the second town on the route while standing 200 km
-   * away in Bihar reads as a broken tracker rather than a countdown.
-   */
   const next = useMemo(
-    () => (live ? route.stops.find(stop => stop.km > along) ?? route.stops.at(-1) : null),
-    [route, along, live]
+    () => (tracking ? route.stops.find(stop => stop.km > along) ?? route.stops.at(-1) : null),
+    [route, along, tracking]
   );
 
   /**
@@ -75,7 +81,6 @@ export function Dashboard() {
           <div><p>KANYAKUMARI → KASHMIR</p><h1>{journey.currentPlace}</h1><span>{journey.mode === "live" ? `Day ${journey.day} · ${number.format(journey.distanceToday)} km today` : "Preparing to walk India from south to north."}</span></div>
         </div>
         <LiveMap stops={route.stops} journey={journey} compact />
-        <button className="locate-button" type="button" onClick={() => setNotice(`Current published point: ${journey.currentPlace}`)} aria-label="Show published location"><LocateFixed size={20} /></button>
       </section>
 
       <section className="metric-grid" aria-label="Walk metrics">
@@ -87,9 +92,13 @@ export function Dashboard() {
           <span>{live ? `to Srinagar at ${livePace(journey.distanceTotal, Math.max(journey.day, walkDay(route.startDate)), calendarPace(route.paceKmPerDay)).toFixed(1)} km/day` : `Kanyakumari · ${formatWalkDate(istNoon(route.startDate))}`}</span>
         </article>
         <article>
-          <small>{live ? "NEXT STOP" : "STARTS AT"}</small>
-          <strong className="place-metric">{live ? (next?.name ?? "The road") : route.stops[0]?.name}</strong>
-          <span>{live ? (next ? `${number.format(next.km - along)} km ahead` : "Finish") : (journey.currentPlace ? `You are in ${journey.currentPlace}` : "Preparing")}</span>
+          <small>{tracking ? "NEXT STOP" : "ROUTE STARTS AT"}</small>
+          <strong className="place-metric">{tracking ? (next?.name ?? "The road") : route.stops[0]?.name}</strong>
+          <span>{tracking
+            ? (next ? `${number.format(next.km - along)} km ahead` : "Finish")
+            : fix
+              ? `You are in ${journey.currentPlace}`
+              : "Waiting for the first position"}</span>
         </article>
       </section>
 

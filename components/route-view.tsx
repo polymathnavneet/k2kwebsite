@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, dayOfWalk, livePace } from "@/lib/geo";
+import { onCourse } from "@/lib/position";
 import { formatWalkDate } from "@/lib/time";
 import { LiveMap } from "./live-map";
 
@@ -12,7 +13,9 @@ export function RouteView() {
   const { journey, route } = useLiveJourney();
 
   const estimate = useMemo(() => {
-    const live = journey.mode === "live";
+    // Which town is next follows the position, not a flag somebody has to
+    // remember to set in the admin panel. See lib/position.ts.
+    const live = onCourse(journey);
     // Count the day from the calendar rather than a typed-in number, so the
     // pace is right even when a field update gets missed.
     const day = live ? Math.max(journey.day, dayOfWalk(route.startDate)) : 0;

@@ -1,5 +1,5 @@
 import { getDb } from "@/db";
-import { isAdmin } from "@/lib/server";
+import { isAdmin, isTracker } from "@/lib/server";
 import { processPoints, type TrackPoint } from "@/lib/tracking";
 
 /**
@@ -86,8 +86,34 @@ function extractPoints(body: Loose): TrackPoint[] {
   return usable.slice(-MAX_POINTS);
 }
 
+/**
+ * GET /api/track?key=...&lat=...&lon=...
+ *
+ * Several free tracker apps can only be pointed at a URL and will only send a
+ * GET. Refusing them would mean the automatic path did not work on the most
+ * common free app, so the same processing is offered here.
+ */
+export async function GET(request: Request) {
+  if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const query = new URL(request.url).searchParams;
+  const lat = num(query.get("lat") ?? query.get("latitude"));
+  const lon = num(query.get("lon") ?? query.get("lng") ?? query.get("longitude"));
+  if (lat === null || lon === null || !valid({ lat, lon })) {
+    return Response.json({ error: "Send lat and lon." }, { status: 400 });
+  }
+
+  const at = query.get("at") ?? query.get("time") ?? query.get("timestamp");
+  const accuracy = num(query.get("acc") ?? query.get("accuracy"));
+  const db = getDb();
+  const result = await processPoints(db, [{ lat, lon, at: at ?? undefined, accuracy: accuracy ?? undefined }]);
+  return Response.json({ ok: true, accepted: 1, ...result });
+}
+
 export async function POST(request: Request) {
-  if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  // Either Navneet in the admin panel, or a tracker app carrying the key that
+  // can do nothing but add positions.
+  if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: Loose;
   try {
@@ -109,6 +135,10 @@ export async function POST(request: Request) {
   // admin panel instead, which is when it is worth recording.
   const db = getDb();
   const result = await processPoints(db, points);
+
+  // OwnTracks reads the reply as a list of commands for the phone and logs a
+  // complaint about anything else. It has nothing to collect, so: nothing.
+  if (body._type === "location") return Response.json([]);
 
   return Response.json({ ok: true, accepted: points.length, ...result });
 }
