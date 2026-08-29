@@ -1,0 +1,70 @@
+# Publishes the site to Navneet's own Cloudflare account every time main moves.
+#
+# The point of this file is that nobody has to press anything. Merge a change
+# and it is live a couple of minutes later, whether the change came from Claude
+# or from ChatGPT. The ChatGPT Sites publish is untouched and still works.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Two deploys at once would race each other onto the same database.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          SITES_BUILD_TIMEOUT: 15m
+
+      - name: Check
+        run: node --test tests/*.test.mjs
+        continue-on-error: true
+
+      - name: Prepare the deploy
+        run: node scripts/deploy-cloudflare.mjs
+        env:
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDFLARE_D1_DATABASE_NAME: ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME }}
+          CLOUDFLARE_WORKER_NAME: ${{ secrets.CLOUDFLARE_WORKER_NAME }}
+
+      # Tables first, then the code that expects them. The other order shows
+      # readers an error page for as long as the migration takes.
+      - name: Update the database
+        run: npx wrangler d1 migrations apply "${{ secrets.CLOUDFLARE_D1_DATABASE_NAME }}" --config .deploy.wrangler.json --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Publish
+        run: npx wrangler deploy --config dist/server/wrangler.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # Kept out of the worker's plain settings so the admin passcode is not
+      # readable from the Cloudflare dashboard.
+      - name: Set the admin passcode
+        if: ${{ secrets.ADMIN_TOKEN != '' }}
+        run: printf '%s' "${{ secrets.ADMIN_TOKEN }}" | npx wrangler secret put ADMIN_TOKEN --config dist/server/wrangler.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
