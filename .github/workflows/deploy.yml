@@ -34,6 +34,10 @@ jobs:
         run: npm run build
         env:
           SITES_BUILD_TIMEOUT: 15m
+          # The site's own public address, baked in so the canonical link,
+          # the sitemap and share previews point at wherever it is really
+          # published. Unset simply keeps the previous ChatGPT address.
+          VITE_SITE_URL: ${{ secrets.SITE_URL }}
 
       - name: Check
         run: node --test tests/*.test.mjs
