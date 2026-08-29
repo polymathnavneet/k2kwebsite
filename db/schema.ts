@@ -111,3 +111,19 @@ export const media = sqliteTable("media", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+/**
+ * The daily entry. One question a day, one answer, published straight to the
+ * journal - so keeping the site alive costs a couple of minutes rather than an
+ * evening of writing.
+ */
+export const journalEntries = sqliteTable("journal_entries", {
+  id: text("id").primaryKey(),
+  day: text("day").notNull(),
+  question: text("question").notNull().default(""),
+  body: text("body").notNull(),
+  place: text("place").notNull().default(""),
+  phase: text("phase").notNull().default("preparation"),
+  published: integer("published").notNull().default(1),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

@@ -29,6 +29,13 @@
       "when": 1788060000000,
       "tag": "0003_media",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788070000000,
+      "tag": "0004_journal",
+      "breakpoints": true
     }
   ]
 }

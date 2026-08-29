@@ -77,3 +77,14 @@ export type MediaItem = {
   sortOrder: number;
   createdAt: string;
 };
+
+export type JournalEntry = {
+  id: string;
+  day: string;
+  question: string;
+  body: string;
+  place: string;
+  phase: string;
+  published: number;
+  createdAt: string;
+};

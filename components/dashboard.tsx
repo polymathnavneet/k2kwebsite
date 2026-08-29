@@ -5,7 +5,7 @@ import { Check, LocateFixed, Share2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import type { Journey, WalkRoute } from "@/lib/types";
-import { RouteMap } from "./route-map";
+import { LiveMap } from "./live-map";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 
@@ -57,7 +57,7 @@ export function Dashboard() {
           <div className="status-line"><span><i />{journey.mode === "live" ? "LIVE WALK" : "PREPARATION MODE"}</span><small>{journey.updatedAt ? `Updated ${new Date(journey.updatedAt).toLocaleString("en-IN")}` : "GPS begins on day one"}</small></div>
           <div><p>KANYAKUMARI → KASHMIR</p><h1>{journey.currentPlace}</h1><span>{journey.mode === "live" ? `Day ${journey.day} · ${number.format(journey.distanceToday)} km today` : "Preparing to walk India from south to north."}</span></div>
         </div>
-        <RouteMap stops={route.stops} journey={journey} compact />
+        <LiveMap stops={route.stops} journey={journey} compact />
         <button className="locate-button" type="button" onClick={() => setNotice(`Current published point: ${journey.currentPlace}`)} aria-label="Show published location"><LocateFixed size={20} /></button>
       </section>
 
