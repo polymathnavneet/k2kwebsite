@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/site";
 
-const BASE = "https://a-long-walk-navneet.navneet10436.chatgpt.site";
+const BASE = SITE_URL;
 const PAGES = ["", "/route", "/messages", "/journal", "/gallery", "/book", "/ahead", "/ahead/place", "/ahead/story", "/ahead/support", "/ahead/question", "/games"];
 
 export default function sitemap(): MetadataRoute.Sitemap {

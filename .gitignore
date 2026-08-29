@@ -43,3 +43,6 @@ next-env.d.ts
 
 # typescript build info
 *.tsbuildinfo
+
+# generated at deploy time, never committed
+/.deploy.wrangler.json

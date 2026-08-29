@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Offline } from "@/components/offline";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   },
   description:
     "Follow Navneet’s live walk from Kanyakumari to Kashmir — 4,270 km on foot. Live map, field notes, and the book.",
-  metadataBase: new URL("https://a-long-walk-navneet.navneet10436.chatgpt.site"),
+  metadataBase: new URL(SITE_URL),
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
