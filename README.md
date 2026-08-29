@@ -1,4 +1,124 @@
-# vinext-starter
+# A Long Walk
+
+Navneet walking roughly 4,270 km from Kanyakumari to Kashmir, starting
+**17 December 2026**. This repository is the website.
+
+The route runs Kanyakumari → Madurai → Salem → Bengaluru → **Hyderabad → Nagpur**
+→ Jabalpur → Rewa → Prayagraj → Varanasi → Lucknow → Delhi → Jammu → Srinagar.
+
+---
+
+## Three things worth knowing
+
+### 1. Messages publish the moment they arrive
+
+There is no holding queue and no "make public" step. Someone writes on one of the
+`/ahead` pages and it is on `/messages` immediately. Only likely spam is held
+back, and that still lands in the admin sheet where it can be released.
+
+To reply: open `/admin`, type in the box under the message, press **Reply**. The
+reply appears under it publicly.
+
+### 2. The distance moves itself, and the dates follow
+
+Open `/admin` → **Journey** → **Sync GPS & add distance**. Each fix is measured
+against the last one and the gap is added to the distance walked, so the total
+climbs on its own and every arrival date recalculates from it.
+
+Two guards keep it honest, and the panel tells you which one it used:
+
+- A move under **100 m** is ignored, so a phone drifting on a table overnight
+  does not invent kilometres.
+- A jump over **150 km** is ignored, so a bus or a bad fix moves the map pin
+  without counting as walking.
+
+Dates come from the planned pace until the walk goes Live, and from the pace
+actually being walked after that. Walking faster pulls every date earlier;
+resting pushes them back. Nothing is typed in by hand.
+
+### 3. Claude and ChatGPT can both edit the content
+
+Everything public is mirrored to plain JSON in [`data/`](data/), and can be
+pulled back out of it:
+
+| File | Holds |
+| --- | --- |
+| `data/route.json` | The route, the stops, the start date, the pace |
+| `data/messages.json` | The public wall and the replies |
+| `data/journey.json` | Where the walk has got to |
+| `data/book.json` | The pre-registration count |
+
+Anyone with repo access edits those files on GitHub. Then in `/admin` press
+**Pull edits from GitHub** and it goes live. Anything changed in the admin panel
+is written straight back, so the files always match the site.
+
+**Contact details are never written to these files.** This repository is public.
+Email addresses and phone numbers stay in the database and appear only in the
+admin sheet, which exports them as CSV for a spreadsheet.
+
+---
+
+## Setup
+
+Two environment variables in the hosting environment.
+
+| Variable | What it does |
+| --- | --- |
+| `ADMIN_TOKEN` | The private passcode for `/admin`. Required. |
+| `GITHUB_TOKEN` | Switches on the `data/` bridge. Optional. |
+
+Without `GITHUB_TOKEN` the site works exactly as before — the mirror simply does
+nothing and the **Pull edits from GitHub** button stays hidden.
+
+To create it: **GitHub → Settings → Developer settings → Personal access tokens →
+Fine-grained tokens**. Give it access to this repository only, with
+**Contents: Read and write**, and nothing else. `GITHUB_REPO` and `GITHUB_BRANCH`
+can override the defaults (`polymathnavneet/k2kwebsite` and `main`).
+
+Commits made by the site carry `[skip ci]`, because the site reads its content
+from the database rather than the build — rebuilding on every message would only
+add delay.
+
+## Offline
+
+The walk goes through places with no signal, so `public/sw.js` caches every page
+and the last thing each API returned. With no signal the site still opens and
+still shows the wall, the route and the map. A message or a book pre-registration
+written offline is saved on the phone and sent when the signal returns, and a red
+bar says so rather than leaving it looking lost.
+
+## API
+
+| Endpoint | Auth | Does |
+| --- | --- | --- |
+| `GET/POST /api/messages` | POST admin actions only | The wall; posting publishes immediately |
+| `GET/POST /api/route` | POST: admin | The route and its stops |
+| `GET/POST /api/journey` | POST: admin | Status, distance, latest dispatch |
+| `POST /api/gps` | admin | Sync a GPS fix and move the distance |
+| `GET/POST /api/sync` | POST: admin | Pull `data/*.json` from GitHub |
+| `GET/POST /api/book` | admin for the list | Pre-registrations; public sees a count |
+| `GET/POST /api/reactions` | — | Cheer and follow counts |
+
+## Checks
+
+```
+npm run lint
+node --test tests/*.test.mjs
+npm run build
+```
+
+`tests/walk-logic.test.mjs` guards the start date, the total distance, the
+Hyderabad-before-Nagpur order, and that GPS drift and bus rides do not inflate
+the distance while real walking does.
+`tests/github-bridge.test.mjs` guards the `data/` bridge.
+
+Two test failures and one lint error predate this work and are unrelated:
+`renders development preview metadata`, `emits the catalog's animation and
+scrolling utilities`, and a `set-state-in-effect` error in `components/games.tsx`.
+
+---
+
+# Notes from the starter template
 
 A clean full-stack starter running on
 [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and

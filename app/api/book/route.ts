@@ -1,6 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookRegistrations } from "@/db/schema";
+import { mirrorBook } from "@/lib/mirror";
 import { clean, isAdmin } from "@/lib/server";
 
 export async function GET(request: Request) {
@@ -42,5 +43,6 @@ export async function POST(request: Request) {
     note: clean(body.note, 400),
   });
   const [result] = await db.select({ count: sql<number>`count(*)` }).from(bookRegistrations);
+  await mirrorBook(db);
   return Response.json({ ok: true, count: Number(result?.count ?? 0) }, { status: 201 });
 }

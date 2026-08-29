@@ -8,7 +8,7 @@ export const messages = sqliteTable("messages", {
   place: text("place").notNull().default(""),
   message: text("message").notNull(),
   contact: text("contact").notNull(),
-  status: text("status").notNull().default("held"),
+  status: text("status").notNull().default("public"),
   reply: text("reply").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   repliedAt: text("replied_at"),

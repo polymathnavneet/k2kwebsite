@@ -2,7 +2,7 @@ import type { Journey, WalkRoute } from "./types";
 
 export const defaultRoute: WalkRoute = {
   title: "A Long Walk",
-  startDate: "2026-12-18",
+  startDate: "2026-12-17",
   paceKmPerDay: 25,
   totalDistance: 4270,
   updatedAt: null,

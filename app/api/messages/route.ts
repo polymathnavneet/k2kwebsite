@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { messages } from "@/db/schema";
+import { mirrorMessages } from "@/lib/mirror";
 import { clean, isAdmin, publicText } from "@/lib/server";
 
 export async function GET(request: Request) {
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
     } else {
       return Response.json({ error: "Unknown action" }, { status: 400 });
     }
+    await mirrorMessages(db);
     return Response.json({ ok: true });
   }
 
@@ -66,9 +68,15 @@ export async function POST(request: Request) {
   if (name.length < 2 || contact.length < 5 || message.length < 8) {
     return Response.json({ error: "Add a public name, private contact and a longer message." }, { status: 400 });
   }
+  // Everything goes on the wall as it arrives. Only likely spam is held back,
+  // and that still lands in the admin sheet where it can be released.
   const spam = /(https?:\/\/.*){2,}|casino|crypto giveaway|viagra/i.test(message);
-  const status = body.publicConsent === true && !spam ? "public" : "held";
+  const status = spam ? "held" : "public";
   const id = crypto.randomUUID();
-  await db.insert(messages).values({ id, type, name, contact, place, message, status });
+  const createdAt = new Date().toISOString();
+  await db.insert(messages).values({ id, type, name, contact, place, message, status, createdAt });
+
+  if (status === "public") await mirrorMessages(db);
+
   return Response.json({ ok: true, id, public: status === "public" }, { status: 201 });
 }

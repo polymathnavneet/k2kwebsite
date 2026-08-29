@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { journey } from "@/db/schema";
 import { defaultJourney } from "@/lib/defaults";
+import { mirrorJourney } from "@/lib/mirror";
 import { clamp, clean, isAdmin } from "@/lib/server";
 
 export async function GET() {
@@ -38,5 +39,6 @@ export async function POST(request: Request) {
   };
   const db = getDb();
   await db.insert(journey).values(data).onConflictDoUpdate({ target: journey.id, set: data });
+  await mirrorJourney(db);
   return Response.json({ ok: true, journey: data });
 }

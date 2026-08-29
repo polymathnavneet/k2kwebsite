@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Offline } from "@/components/offline";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,6 +16,11 @@ export const metadata: Metadata = {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
   },
+  manifest: "/manifest.webmanifest",
+};
+
+export const viewport = {
+  themeColor: "#201e1d",
 };
 
 export default function RootLayout({
@@ -24,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><Offline />{children}</body>
     </html>
   );
 }

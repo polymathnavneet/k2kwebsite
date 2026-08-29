@@ -38,3 +38,6 @@
 @media(max-width:390px){.live-chip{display:none}.metric-grid strong{font-size:28px}.route-label{font-size:8px}.choice-list>a{grid-template-columns:36px 1fr}.choice-list>a>span{display:none}.memory-grid{grid-template-columns:repeat(2,1fr)}.admin-bar>div{width:100%}.admin-bar button{flex:1}.status-presets{grid-template-columns:1fr}}
 
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+.offline-bar{position:fixed;left:0;right:0;bottom:66px;z-index:45;background:var(--red);color:#fff;padding:10px 14px;font-size:11px;font-weight:900;text-align:center;line-height:1.35}
+@media(min-width:700px){.offline-bar{bottom:0}}

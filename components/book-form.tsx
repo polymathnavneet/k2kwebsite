@@ -9,14 +9,50 @@ export function BookForm() {
   const [count, setCount] = useState(0);
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
-  useEffect(() => { fetch("/api/book").then(response => response.json()).then(data => setCount(data.count || 0)).catch(() => {}); }, []);
+  const queueKey = "alw-book-queue";
+
+  async function send(payload: Record<string, unknown>) {
+    const response = await fetch("/api/book", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+    const result = await response.json() as { error?: string; duplicate?: boolean; count?: number };
+    if (!response.ok) throw new Error(result.error || "Could not register");
+    return result;
+  }
+
+  useEffect(() => {
+    fetch("/api/book").then(response => response.json()).then(data => setCount(data.count || 0)).catch(() => {});
+
+    // Anything registered without signal is sent as soon as it returns.
+    const flush = async () => {
+      if (!navigator.onLine) return;
+      const queue = JSON.parse(localStorage.getItem(queueKey) || "[]") as Record<string, unknown>[];
+      while (queue.length) {
+        try { await send(queue[0]); queue.shift(); localStorage.setItem(queueKey, JSON.stringify(queue)); }
+        catch { return; }
+      }
+      localStorage.removeItem(queueKey);
+    };
+    flush();
+    addEventListener("online", flush);
+    return () => removeEventListener("online", flush);
+  }, []);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSending(true); setStatus("Saving your place…");
     const form = event.currentTarget;
-    const response = await fetch("/api/book", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.fromEntries(new FormData(form))) });
-    const result = await response.json() as { error?: string; duplicate?: boolean; count?: number };
-    if (response.ok) { form.reset(); setCount(result.count || count); setStatus(result.duplicate ? "You are already on the early-reader list." : "You are pre-registered. No payment was taken."); }
-    else setStatus(result.error || "Could not register");
+    const payload = Object.fromEntries(new FormData(form));
+    try {
+      const result = await send(payload);
+      form.reset();
+      setCount(result.count || count);
+      setStatus(result.duplicate ? "You are already on the early-reader list." : "You are pre-registered. No payment was taken.");
+    } catch (error) {
+      if (!navigator.onLine) {
+        const queue = JSON.parse(localStorage.getItem(queueKey) || "[]") as unknown[];
+        queue.push(payload);
+        localStorage.setItem(queueKey, JSON.stringify(queue.slice(-20)));
+        setStatus("Saved on this phone. You will be registered when your signal returns.");
+      } else setStatus(error instanceof Error ? error.message : "Could not register");
+    }
     setSending(false);
   }
   return <form className="book-form" onSubmit={submit}>

@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import { routeConfig, routeStops } from "@/db/schema";
 import { defaultRoute } from "@/lib/defaults";
+import { mirrorRoute } from "@/lib/mirror";
 import { clamp, clean, isAdmin } from "@/lib/server";
 
 export async function GET() {
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
         .bind(stop.sortOrder, stop.name, stop.state, stop.lat, stop.lon, stop.km, stop.note)),
     ];
     await runtime.DB.batch(statements);
+    await mirrorRoute(getDb());
     return Response.json({ ok: true, route: { title: "A Long Walk", startDate, paceKmPerDay: pace, totalDistance: stops.at(-1)!.km, updatedAt: now, stops } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Could not save route" }, { status: 400 });
