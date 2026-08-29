@@ -33,6 +33,8 @@ export function Assistant({ token }: { token: string }) {
   const [draft, setDraft] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [chat, setChat] = useState("");
+  const [opener, setOpener] = useState("");
   const [loaded, setLoaded] = useState(false);
 
   const current = asks[0];
@@ -52,6 +54,7 @@ export function Assistant({ token }: { token: string }) {
       const result = await call("/api/assistant");
       setAsks(result.asks || []);
       setSummary(result.summary || "");
+      setOpener(result.opener || "");
     } catch {
       setSummary("Could not reach the site.");
     } finally {
@@ -82,6 +85,7 @@ export function Assistant({ token }: { token: string }) {
       say("site", result.said);
       setAsks(result.asks || []);
       setSummary(result.summary || summary);
+      if (result.opener) setOpener(result.opener);
     } catch (error) {
       say("site", error instanceof Error ? error.message : "That did not work");
     } finally {
@@ -89,6 +93,29 @@ export function Assistant({ token }: { token: string }) {
       setDraft("");
       setPicked([]);
     }
+  }
+
+  // Type anything at it: a distance, a place, a link, a reply, or just the day.
+  async function sendChat() {
+    const text = chat.trim();
+    if (text.length < 2) return;
+    setBusy(true);
+    say("me", text);
+    setChat("");
+    try {
+      const result = await call("/api/assistant", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ kind: "free", answer: text }),
+      });
+      if (result.understood) say("site", result.understood);
+      say("site", result.said);
+      setAsks(result.asks || []);
+      setSummary(result.summary || summary);
+      if (result.opener) setOpener(result.opener);
+    } catch (error) {
+      say("site", error instanceof Error ? error.message : "That did not work");
+    } finally { setBusy(false); }
   }
 
   async function skip() {
@@ -129,7 +156,7 @@ export function Assistant({ token }: { token: string }) {
 
   return <section className="assistant">
     <div className="assistant-head">
-      <div><b>{asks.length ? `${asks.length} thing${asks.length === 1 ? "" : "s"} need you` : "Nothing needs you"}</b><span>{summary}</span></div>
+      <div><b>{opener || (asks.length ? `${asks.length} thing${asks.length === 1 ? "" : "s"} need you` : "Nothing needs you")}</b><span>{summary}</span></div>
       <Button variant="outline" size="icon" aria-label="Check again" onClick={load}><RefreshCw /></Button>
     </div>
 
@@ -197,5 +224,16 @@ export function Assistant({ token }: { token: string }) {
         <button className="assistant-skip" type="button" disabled={busy} onClick={skip}><SkipForward size={13} /> Not now</button>
       </div>
     )}
+
+    <form className="assistant-chat" onSubmit={event => { event.preventDefault(); sendChat(); }}>
+      <Input
+        value={chat}
+        onChange={event => setChat(event.target.value)}
+        placeholder="Or just tell me — &ldquo;walked 18 km&rdquo;, &ldquo;in Nagpur&rdquo;, paste a link…"
+        aria-label="Tell the assistant anything"
+        disabled={busy}
+      />
+      <Button type="submit" disabled={busy || chat.trim().length < 2}>Send</Button>
+    </form>
   </section>;
 }

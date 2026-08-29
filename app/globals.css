@@ -159,3 +159,7 @@
 .ask-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
 .ask-actions button{border-radius:0;flex:1;min-height:46px}
 .assistant-skip{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;padding:11px;min-height:44px;border:0;background:none;font-size:12px;font-weight:700;opacity:.6}
+
+.assistant-chat{display:flex;gap:8px;padding:11px 13px;border-top:1px solid var(--ink);background:var(--paper-2)}
+.assistant-chat input{flex:1;border:1px solid var(--ink);border-radius:0;background:#fff;min-height:46px;font-size:16px}
+.assistant-chat button{border-radius:0;min-height:46px;flex:none}

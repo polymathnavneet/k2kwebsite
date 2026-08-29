@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { journalEntries, journey, media, messages } from "@/db/schema";
-import { buildAsks } from "@/lib/assistant";
+import { buildAsks, remember } from "@/lib/assistant";
+import { describe, understand } from "@/lib/understand";
+import { acknowledge } from "@/lib/voice";
 import { detectKind } from "@/lib/embed";
 import { defaultJourney } from "@/lib/defaults";
 import { mirrorMessages } from "@/lib/mirror";
@@ -22,8 +24,8 @@ import { processPoints } from "@/lib/tracking";
 export async function GET(request: Request) {
   if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const db = getDb();
-  const { asks, summary } = await buildAsks(db);
-  return Response.json({ asks, summary, count: asks.length });
+  const { asks, summary, opener } = await buildAsks(db);
+  return Response.json({ asks, summary, opener, count: asks.length });
 }
 
 export async function POST(request: Request) {
@@ -42,7 +44,10 @@ export async function POST(request: Request) {
   const answer = body.answer;
   const skipped = body.skip === true;
 
-  if (skipped) return done(db, "Skipped. It will come back next time.");
+  if (skipped) {
+    await remember(db, `skip:${kind}`, "skip", kind);
+    return done(db, "Fine — I will ask less often.");
+  }
 
   switch (kind) {
     /* ------------------------------------------------------- start walking */
@@ -114,7 +119,11 @@ export async function POST(request: Request) {
       };
       if (existing) await db.update(journalEntries).set(row).where(eq(journalEntries.id, existing.id));
       else await db.insert(journalEntries).values(row);
-      return done(db, existing ? "Today's entry updated." : "Published to the journal.");
+      // Remember which shorthand he actually uses, so it rises to the top next time.
+      for (const tapped of text.split(" · ").map(part => part.trim()).filter(Boolean).slice(0, 8)) {
+        await remember(db, `tap:${tapped}`, "tap", tapped);
+      }
+      return done(db, acknowledge(existing ? "today's entry updated." : "that is on the journal."));
     }
 
     /* --------------------------------------------------- distance by hand */
@@ -154,6 +163,62 @@ export async function POST(request: Request) {
       return done(db, existing ? "That one is already in the gallery." : "Added to the gallery.");
     }
 
+    /* --------------------------------------------- anything typed at it */
+    case "free": {
+      const intent = understand(String(answer ?? ""));
+      const understood = describe(intent);
+      const url = new URL(request.url);
+      const token = request.headers.get("x-admin-token") ?? "";
+      const forward = (kindName: string, value: unknown, ctx: Record<string, unknown> = {}) =>
+        fetch(`${url.origin}/api/assistant`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-admin-token": token },
+          body: JSON.stringify({ kind: kindName, answer: value, context: ctx }),
+        }).then(response => response.json());
+
+      switch (intent.action) {
+        case "media": return Response.json({ ...(await forward("media", intent.url)), understood });
+        case "distance": return Response.json({ ...(await forward("distance", intent.km)), understood });
+        case "mode": return Response.json(await forward("mode", true));
+
+        case "remember": {
+          await remember(db, `fact:${intent.fact.slice(0, 60)}`, "fact", intent.fact);
+          return done(db, acknowledge("noted. I will keep that in mind."));
+        }
+
+        case "status": {
+          const [current] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
+          const next = { ...(current ?? { id: 1, ...defaultJourney }), id: 1, status: intent.status, updatedAt: new Date().toISOString() };
+          await db.insert(journey).values(next).onConflictDoUpdate({ target: journey.id, set: next });
+          return done(db, acknowledge(`status is now ${intent.status.toLowerCase()}.`));
+        }
+
+        case "place": {
+          const [current] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
+          const next = { ...(current ?? { id: 1, ...defaultJourney }), id: 1, currentPlace: intent.place, updatedAt: new Date().toISOString() };
+          await db.insert(journey).values(next).onConflictDoUpdate({ target: journey.id, set: next });
+          return done(db, acknowledge(`you are in ${intent.place}.`, "Sync your GPS when you can and the distance follows."));
+        }
+
+        case "reply": {
+          // Match the name against people actually waiting.
+          const waiting = await db.select({ id: messages.id, name: messages.name }).from(messages).where(eq(messages.reply, "")).limit(50);
+          const wanted = intent.who.toLowerCase();
+          const target = waiting.find(row => row.name.toLowerCase().startsWith(wanted))
+            ?? waiting.find(row => row.name.toLowerCase().includes(wanted));
+          if (!target) {
+            return done(db, `I could not find anyone called ${intent.who} waiting for a reply. Open the Messages tab to pick them.`);
+          }
+          return Response.json(await forward("reply", intent.text, { messageId: target.id, name: target.name }));
+        }
+
+        default: {
+          const result = await forward("journal", intent.text, { day: istDayKey() });
+          return Response.json({ ...result, understood });
+        }
+      }
+    }
+
     default:
       return Response.json({ error: "I do not know how to do that one." }, { status: 400 });
   }
@@ -161,6 +226,6 @@ export async function POST(request: Request) {
 
 /** Answer, then immediately say what is still outstanding. */
 async function done(db: ReturnType<typeof getDb>, said: string, extra: Record<string, unknown> = {}) {
-  const { asks, summary } = await buildAsks(db);
-  return Response.json({ ok: true, said, asks, summary, ...extra });
+  const { asks, summary, opener } = await buildAsks(db);
+  return Response.json({ ok: true, said, asks, summary, opener, ...extra });
 }

@@ -1,10 +1,11 @@
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
-import { bookRegistrations, gpsPoints, journalEntries, journey, media, messages, routeConfig, routeStops, routeSuggestions } from "@/db/schema";
+import { assistantMemory, bookRegistrations, gpsPoints, journalEntries, journey, media, messages, routeConfig, routeStops, routeSuggestions } from "@/db/schema";
 import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import { promptForDay, tapsForMode } from "@/lib/prompts";
 import { istDayKey, walkDay } from "@/lib/time";
+import { opener, why } from "@/lib/voice";
 
 type Db = DrizzleD1Database<typeof schema>;
 
@@ -38,7 +39,39 @@ export type Ask = {
 
 const HOURS = 3600000;
 
-export async function buildAsks(db: Db): Promise<{ asks: Ask[]; summary: string }> {
+/* --------------------------------------------------------------- memory */
+
+/** Bump a tally. This is the whole of "it learns". */
+export async function remember(db: Db, key: string, kind: string, value = "") {
+  const existing = await db.select().from(assistantMemory).where(eq(assistantMemory.key, key)).limit(1);
+  const count = (existing[0]?.count ?? 0) + 1;
+  const row = { key, kind, value: value || existing[0]?.value || "", count, updatedAt: new Date().toISOString() };
+  await db.insert(assistantMemory).values(row).onConflictDoUpdate({ target: assistantMemory.key, set: row });
+}
+
+export async function recall(db: Db) {
+  const rows = await db.select().from(assistantMemory).orderBy(desc(assistantMemory.count)).limit(200);
+  const taps = rows.filter(r => r.kind === "tap");
+  const skips = new Map(rows.filter(r => r.kind === "skip").map(r => [r.value, r.count]));
+  const facts = rows.filter(r => r.kind === "fact").slice(0, 10);
+  return { taps, skips, facts };
+}
+
+/**
+ * How long to leave a question alone after it has been skipped.
+ *
+ * Asking the same thing every single time after it has been waved away three
+ * times is how a helpful thing turns into a nagging one. Backing off is not
+ * giving up: the question returns, just less often.
+ */
+function skippedTooOften(skips: Map<string, number>, kind: string) {
+  const count = skips.get(kind) ?? 0;
+  if (count < 3) return false;
+  // After three skips, surface it roughly one time in three.
+  return Math.floor(Date.now() / 3600000) % 3 !== 0;
+}
+
+export async function buildAsks(db: Db): Promise<{ asks: Ask[]; summary: string; opener: string }> {
   const [current] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
   const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
   const state = current ?? { id: 1, ...defaultJourney };
@@ -47,6 +80,7 @@ export async function buildAsks(db: Db): Promise<{ asks: Ask[]; summary: string 
   const now = Date.now();
 
   const asks: Ask[] = [];
+  const memory = await recall(db);
 
   /* ------------------------------------------------- has the walk started? */
   const dueDay = walkDay(startDate);
@@ -123,7 +157,9 @@ export async function buildAsks(db: Db): Promise<{ asks: Ask[]; summary: string 
       question: promptForDay(state.mode),
       detail: gap && gap > 1 ? `Nothing written for ${gap} days.` : "Nothing written today yet.",
       input: "taps",
-      taps: tapsForMode(state.mode).flatMap(group => group.options).slice(0, 12),
+      // The things he actually taps come first, so his own shorthand is nearest
+      // his thumb instead of buried under options he has never used.
+      taps: orderByUse(tapsForMode(state.mode).flatMap(group => group.options), memory.taps).slice(0, 12),
       context: { day: today },
     });
   }
@@ -160,6 +196,35 @@ export async function buildAsks(db: Db): Promise<{ asks: Ask[]; summary: string 
     ? `Day ${dueDay} · ${Math.round(state.routeProgressKm || state.distanceTotal)} km along · ${state.currentPlace || "position unknown"} · ${Number(stopCount?.total ?? 0)} stops · ${Number(bookCount?.total ?? 0)} pre-registered`
     : `Preparation · starts ${startDate} · ${Number(stopCount?.total ?? 0)} stops · ${Number(bookCount?.total ?? 0)} pre-registered`;
 
-  asks.sort((a, b) => b.priority - a.priority);
-  return { asks, summary };
+  const quietened = asks.filter(ask => !skippedTooOften(memory.skips, ask.kind));
+  quietened.sort((a, b) => b.priority - a.priority);
+
+  const [yesterdayEntry] = await db.select().from(journalEntries).orderBy(desc(journalEntries.day)).limit(1);
+  const daysSinceEntry = yesterdayEntry
+    ? Math.round((new Date(today).getTime() - new Date(yesterdayEntry.day).getTime()) / 86400000)
+    : null;
+
+  const facts = {
+    live,
+    day: dueDay,
+    place: state.currentPlace,
+    fixAgeHours,
+    waiting: unanswered.length,
+    daysSinceEntry,
+    todayKm: state.distanceToday,
+  };
+
+  // Say why each question is worth answering, in terms of what it costs not to.
+  for (const ask of quietened) {
+    const reason = why(ask.kind, facts);
+    if (reason && !ask.detail) ask.detail = reason;
+  }
+
+  return { asks: quietened, summary, opener: opener(facts) };
+}
+
+/** Put the options he actually uses at the front. */
+function orderByUse(options: string[], taps: { value: string; count: number }[]) {
+  const used = new Map(taps.map(t => [t.value, t.count]));
+  return [...options].sort((a, b) => (used.get(b) ?? 0) - (used.get(a) ?? 0));
 }

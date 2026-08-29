@@ -155,3 +155,19 @@ export const gpsPoints = sqliteTable(
   },
   table => [uniqueIndex("gps_point_unique").on(table.recordedAt, table.lat, table.lon)]
 );
+
+/**
+ * What the assistant has learned about how Navneet actually uses it.
+ *
+ * Not a trained model - a tally. Which things he taps, which questions he keeps
+ * skipping, how far he usually walks, and anything he has told it to remember.
+ * Enough to stop asking about what he never answers and to put his own words
+ * first, which is most of what "it learns" honestly means here.
+ */
+export const assistantMemory = sqliteTable("assistant_memory", {
+  key: text("key").primaryKey(),
+  kind: text("kind").notNull().default("fact"),
+  value: text("value").notNull().default(""),
+  count: integer("count").notNull().default(0),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
