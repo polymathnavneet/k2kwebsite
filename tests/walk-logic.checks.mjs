@@ -17,6 +17,17 @@ assert.equal(route.totalDistance, 4270, "total must be 4270 km");
 const names = route.stops.map(s => s.name);
 assert.ok(names.indexOf("Hyderabad") < names.indexOf("Nagpur"), "Hyderabad must come before Nagpur");
 assert.ok(!names.includes("Mumbai"), "Mumbai must be gone");
+let previousKm = -1;
+for (const stop of route.stops) {
+  assert.ok(stop.km > previousKm || stop.km === 0, `stops must increase in km: ${stop.name}`);
+  assert.ok(stop.lat >= 6 && stop.lat <= 36 && stop.lon >= 68 && stop.lon <= 98, `${stop.name} is outside India`);
+  assert.ok(stop.name && stop.state, `${stop.name} is missing a name or state`);
+  previousKm = stop.km;
+}
+const gaps = route.stops.slice(1).map((s, i) => s.km - route.stops[i].km);
+assert.ok(Math.max(...gaps) <= 200, `longest gap is ${Math.max(...gaps)} km - too far between stops`);
+assert.equal(route.stops.at(-1).km, route.totalDistance, "the last stop must be the total distance");
+console.log(`✓ ${route.stops.length} stops, all in order and inside India, longest gap ${Math.max(...gaps)} km`);
 console.log("✓ start date, distance, Hyderabad-before-Nagpur, no Mumbai\n");
 
 // --- GPS accumulation, mirroring app/api/gps/route.ts -----------------------
@@ -64,7 +75,7 @@ function plan(distanceTotal, day, live = true) {
     name: s.name, km: s.km, reached: live && s.km <= distanceTotal,
     eta: new Date(base.getTime() + Math.max(0, s.km - (live ? distanceTotal : 0)) / pace * 86400000),
   }));
-  return { pace, finish: fmt(stops.at(-1).eta), next: stops.find(s => !s.reached), reached: stops.filter(s => s.reached).length };
+  return { pace, stops, finish: fmt(stops.at(-1).eta), next: stops.find(s => !s.reached), reached: stops.filter(s => s.reached).length };
 }
 
 const before2 = plan(0, 0, false);
@@ -78,8 +89,14 @@ console.log(`slow      700km  pace ${slow.pace.toFixed(1)}  finish ${slow.finish
 
 assert.ok(new Date(fast.finish) < new Date(onPlan.finish), "walking faster must pull the finish earlier");
 assert.ok(new Date(slow.finish) > new Date(onPlan.finish), "walking slower must push the finish later");
-assert.equal(onPlan.next.name, "Hyderabad", "at 1250 km the next stop is Hyderabad");
-assert.equal(fast.next.name, "Jabalpur", "at 1900 km Nagpur (1770) is passed, so Jabalpur is next");
+// Assert the rule, not a particular city: the next stop is always the first
+// one further along than the distance walked. This keeps the test honest when
+// stops are added to or removed from the route.
+for (const [label, distance, plan_] of [["1250 km", 1250, onPlan], ["1900 km", 1900, fast], ["700 km", 700, slow]]) {
+  const expected = route.stops.find(s => s.km > distance);
+  assert.equal(plan_.next.name, expected.name, `at ${label} the next stop should be ${expected.name}`);
+  assert.ok(plan_.stops.filter(s => s.reached).every(s => s.km <= distance), "nothing beyond the distance walked may be marked reached");
+}
 console.log("✓ faster pulls dates earlier, slower pushes them later, next stop tracks distance\n");
 
 // A single bad reading must not throw the finish into next decade.

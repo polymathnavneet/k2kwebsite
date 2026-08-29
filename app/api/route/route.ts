@@ -25,8 +25,8 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
-  if (!Array.isArray(body.stops) || body.stops.length < 2 || body.stops.length > 40) {
-    return Response.json({ error: "The route needs 2–40 stops." }, { status: 400 });
+  if (!Array.isArray(body.stops) || body.stops.length < 2 || body.stops.length > 120) {
+    return Response.json({ error: "The route needs between 2 and 120 stops." }, { status: 400 });
   }
   let previous = -1;
   try {
