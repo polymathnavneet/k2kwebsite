@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { Check, LocateFixed, Share2 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { useLiveJourney } from "@/hooks/use-live-journey";
+import { calendarPace, livePace } from "@/lib/geo";
+import { formatWalkDate, istNoon, walkDay } from "@/lib/time";
 import { LiveMap } from "./live-map";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
+const formatIso = (date: Date) => new Date(date.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 
 export function Dashboard() {
   const { journey, route } = useLiveJourney();
@@ -15,9 +17,35 @@ export function Dashboard() {
   // Progress and the next stop follow the position along the route, not the
   // raw distance walked. On a detour those differ, and the raw figure would
   // claim towns had been passed that are still ahead.
-  const along = journey.mode === "live" ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
-  const progress = Math.min(100, (along / route.totalDistance) * 100);
-  const next = useMemo(() => route.stops.find(stop => stop.km > along) ?? route.stops.at(-1), [route, along]);
+  const live = journey.mode === "live";
+  const along = live ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
+
+  /**
+   * Before the walk starts there is no "next stop", because no stop has been
+   * left behind. Showing the second town on the route while standing 200 km
+   * away in Bihar reads as a broken tracker rather than a countdown.
+   */
+  const next = useMemo(
+    () => (live ? route.stops.find(stop => stop.km > along) ?? route.stops.at(-1) : null),
+    [route, along, live]
+  );
+
+  /**
+   * Days left, which is the number that actually means something day to day.
+   * Before the start it counts down to the first step; once walking it is the
+   * distance still to go at the pace being walked. Both move on their own,
+   * because both come from today's date.
+   */
+  const daysLeft = useMemo(() => {
+    if (!live) {
+      const start = istNoon(route.startDate).getTime();
+      const today = istNoon(formatIso(new Date())).getTime();
+      return Math.max(0, Math.round((start - today) / 86400000));
+    }
+    const day = Math.max(journey.day, walkDay(route.startDate));
+    const pace = livePace(journey.distanceTotal, day, calendarPace(route.paceKmPerDay));
+    return Math.max(0, Math.ceil((route.totalDistance - along) / Math.max(1, pace)));
+  }, [live, route, journey, along]);
 
   async function react(type: "cheer" | "follow") {
     const key = `alw-${type}-${type === "cheer" ? new Date().toISOString().slice(0, 10) : "saved"}`;
@@ -53,8 +81,16 @@ export function Dashboard() {
       <section className="metric-grid" aria-label="Walk metrics">
         <article><small>DAY</small><strong>{journey.mode === "live" ? journey.day : "—"}</strong><span>{journey.mode === "live" ? "Expedition day" : "Before start"}</span></article>
         <article><small>TOTAL DISTANCE</small><strong>{number.format(journey.distanceTotal)}<em> km</em></strong><span>of {number.format(route.totalDistance)} km</span></article>
-        <article><small>PROGRESS</small><strong>{progress.toFixed(1)}%</strong><Progress value={progress} /></article>
-        <article><small>NEXT STOP</small><strong className="place-metric">{next?.name ?? "The road"}</strong><span>{next ? `${number.format(next.km - journey.distanceTotal)} km ahead` : "Finish"}</span></article>
+        <article>
+          <small>{live ? "DAYS REMAINING" : "DAYS TO THE FIRST STEP"}</small>
+          <strong>{daysLeft}</strong>
+          <span>{live ? `to Srinagar at ${livePace(journey.distanceTotal, Math.max(journey.day, walkDay(route.startDate)), calendarPace(route.paceKmPerDay)).toFixed(1)} km/day` : `Kanyakumari · ${formatWalkDate(istNoon(route.startDate))}`}</span>
+        </article>
+        <article>
+          <small>{live ? "NEXT STOP" : "STARTS AT"}</small>
+          <strong className="place-metric">{live ? (next?.name ?? "The road") : route.stops[0]?.name}</strong>
+          <span>{live ? (next ? `${number.format(next.km - along)} km ahead` : "Finish") : (journey.currentPlace ? `You are in ${journey.currentPlace}` : "Preparing")}</span>
+        </article>
       </section>
 
       <section className="signal-grid">
