@@ -3,9 +3,9 @@
  *
  * The build writes dist/server/wrangler.json with a placeholder database id,
  * because the Sites runtime injects the real one at publish time. Deploying
- * ourselves means filling that in from the repository secrets instead. Nothing
- * here touches .openai/hosting.json, so the Sites publish keeps working exactly
- * as it does today.
+ * ourselves means filling that in with the values resolve-cloudflare.mjs worked
+ * out from the account. Nothing here touches .openai/hosting.json, so the Sites
+ * publish keeps working exactly as it does today.
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -13,14 +13,14 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const built = resolve(root, "dist", "server", "wrangler.json");
 
-const databaseId = required("CLOUDFLARE_D1_DATABASE_ID");
-const databaseName = required("CLOUDFLARE_D1_DATABASE_NAME");
-const workerName = process.env.CLOUDFLARE_WORKER_NAME?.trim();
+const databaseId = required("CF_D1_ID");
+const databaseName = required("CF_D1_NAME");
+const workerName = process.env.CF_WORKER_NAME?.trim();
 
 function required(name) {
   const value = process.env[name]?.trim();
   if (!value) {
-    console.error(`Missing ${name}. Add it under the repository's Settings -> Secrets and variables -> Actions.`);
+    console.error(`Missing ${name}. The "Work out where this is going" step should have set it.`);
     process.exit(78);
   }
   return value;

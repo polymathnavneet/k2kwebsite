@@ -30,14 +30,25 @@ jobs:
       - name: Install
         run: npm ci
 
+      # Before anything is built, because the site's own address comes out of
+      # this and has to be baked into the build.
+      - name: Work out where this is going
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_NAME: ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDFLARE_WORKER_NAME: ${{ secrets.CLOUDFLARE_WORKER_NAME }}
+        run: node scripts/resolve-cloudflare.mjs
+
       - name: Build
-        run: npm run build
         env:
           SITES_BUILD_TIMEOUT: 15m
-          # The site's own public address, baked in so the canonical link,
-          # the sitemap and share previews point at wherever it is really
-          # published. Unset simply keeps the previous ChatGPT address.
-          VITE_SITE_URL: ${{ secrets.SITE_URL }}
+          # The site's own public address, baked in so the canonical link, the
+          # sitemap and share previews point at wherever it is really published.
+          # A SITE_URL secret wins, for when a real domain is set up later.
+          VITE_SITE_URL: ${{ secrets.SITE_URL || env.CF_SITE_URL }}
+        run: npm run build
 
       # Reported, never blocking. Two checks in the starter have always failed,
       # and a deploy should not be held hostage to them.
@@ -46,36 +57,20 @@ jobs:
 
       - name: Prepare the deploy
         run: node scripts/deploy-cloudflare.mjs
-        env:
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-          CLOUDFLARE_D1_DATABASE_NAME: ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME }}
-          CLOUDFLARE_WORKER_NAME: ${{ secrets.CLOUDFLARE_WORKER_NAME }}
-
-      # A wrong id here fails with Cloudflare's "No route for that URI", which
-      # names nothing and reads like an outage. Ask Cloudflare what is actually
-      # there, so the log says which secret is wrong and what to put in it.
-      - name: Check the Cloudflare connection
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_D1_DATABASE_NAME: ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-        run: node scripts/check-cloudflare.mjs
 
       # Tables first, then the code that expects them. The other order shows
       # readers an error page for as long as the migration takes.
       - name: Update the database
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          DATABASE_NAME: ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME }}
-        run: npx wrangler d1 migrations apply "$DATABASE_NAME" --config .deploy.wrangler.json --remote
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx wrangler d1 migrations apply "$CF_D1_NAME" --config .deploy.wrangler.json --remote
 
       - name: Publish
-        run: npx wrangler deploy --config dist/server/wrangler.json
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx wrangler deploy --config dist/server/wrangler.json
 
       # Kept out of the worker's plain settings so the admin passcode is not
       # readable from the Cloudflare dashboard.
@@ -86,7 +81,7 @@ jobs:
       - name: Set the admin passcode
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
           if [ -z "$ADMIN_TOKEN" ]; then
@@ -94,3 +89,14 @@ jobs:
             exit 0
           fi
           printf '%s' "$ADMIN_TOKEN" | npx wrangler secret put ADMIN_TOKEN --config dist/server/wrangler.json
+
+      # Put the address on the run's summary page, so finding it does not mean
+      # reading a log.
+      - name: Where it went
+        run: |
+          {
+            echo "### The site is live"
+            echo ""
+            echo "- Website: $CF_SITE_URL"
+            echo "- Admin panel: $CF_SITE_URL/admin"
+          } >> "$GITHUB_STEP_SUMMARY"
