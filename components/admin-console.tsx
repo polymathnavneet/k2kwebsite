@@ -27,6 +27,8 @@ export function AdminConsole() {
   const [books, setBooks] = useState<BookRow[]>([]);
   const [replies, setReplies] = useState<Record<string, string>>({});
   const [githubReady, setGithubReady] = useState(false);
+  const [busyRow, setBusyRow] = useState("");
+  const [rowNote, setRowNote] = useState<Record<string, string>>({});
 
   async function request<T>(url: string, options: RequestInit = {}) {
     const cleanToken = token.trim();
@@ -46,7 +48,10 @@ export function AdminConsole() {
         request<{ rows: BookRow[] }>("/api/book?admin=1"),
       ]);
       setJourney(journeyData); setRoute(routeData); setMessages(messageData.rows); setBooks(bookData.rows);
-      setReplies(Object.fromEntries(messageData.rows.map(row => [row.id, row.reply || ""])));
+      // Keep whatever is already typed; only fill in boxes that are untouched,
+      // so a reload never throws away a half-written reply.
+      setReplies(current => Object.fromEntries(messageData.rows.map(row =>
+        [row.id, current[row.id] !== undefined ? current[row.id] : (row.reply || "")])));
       setToken(token.trim()); setConnected(true); localStorage.setItem("alw-admin-token", token.trim());
       setStatus(`Synced · ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`);
     } catch (error) { setConnected(false); setStatus(error instanceof Error ? `${error.message}. Check the passcode.` : "Could not connect"); }
@@ -103,9 +108,46 @@ export function AdminConsole() {
   }
 
   async function messageAction(id: string, action: "reply" | "publish" | "hide") {
-    setStatus("Publishing…");
-    try { await request("/api/messages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, action, reply: replies[id] }) }); await loadAll(); }
-    catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish"); }
+    const reply = (replies[id] || "").trim();
+
+    // Catch the empty-reply case here rather than making the person wait for a
+    // round trip to be told the same thing in a status line they cannot see.
+    if (action === "reply" && !reply) {
+      setRowNote(current => ({ ...current, [id]: "Write a reply in the box above first." }));
+      return;
+    }
+
+    setBusyRow(id);
+    setRowNote(current => ({ ...current, [id]: "" }));
+    try {
+      await request("/api/messages", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id, action, reply }),
+      });
+
+      // Update just this row. Reloading everything used to be the only feedback,
+      // and on a phone it looked like nothing had happened at all.
+      const now = new Date().toISOString();
+      setMessages(current => current.map(row => row.id !== id ? row : {
+        ...row,
+        ...(action === "reply" ? { reply, status: "public", repliedAt: now } : {}),
+        ...(action === "publish" ? { status: "public" } : {}),
+        ...(action === "hide" ? { status: "hidden" } : {}),
+      }));
+
+      const said = action === "reply" ? "Reply published. It is on the public wall now."
+        : action === "publish" ? "Published. It is on the public wall now."
+        : "Hidden. It is off the public wall.";
+      setRowNote(current => ({ ...current, [id]: said }));
+      setStatus(said);
+    } catch (error) {
+      const said = error instanceof Error ? error.message : "Could not save that";
+      setRowNote(current => ({ ...current, [id]: said }));
+      setStatus(said);
+    } finally {
+      setBusyRow("");
+    }
   }
 
   function exportCsv(kind: "messages" | "book") {
@@ -128,7 +170,7 @@ export function AdminConsole() {
       </TabsContent>
       <TabsContent value="route" className="admin-panel"><div className="admin-heading"><div><h2>Dynamic route sheet</h2><p>Edit once; the map and every city date update.</p></div><Button onClick={saveRoute}>Publish route</Button></div><div className="route-controls"><label>START DATE<Input type="date" value={route.startDate} onChange={event => setRoute(value => ({ ...value, startDate: event.target.value }))} /></label><label>PACE KM/DAY<Input type="number" value={route.paceKmPerDay} onChange={event => setRoute(value => ({ ...value, paceKmPerDay: Number(event.target.value) }))} /></label><Button variant="outline" onClick={() => setRoute(value => ({ ...value, stops: [...value.stops, { name: "New stop", state: "", lat: value.stops.at(-1)?.lat || 0, lon: value.stops.at(-1)?.lon || 0, km: (value.stops.at(-1)?.km || 0) + 100, note: "" }] }))}><Plus /> Add stop</Button></div><div className="route-editor">{route.stops.map((stop, index) => <article key={`${stop.name}-${index}`}><header><b>{String(index + 1).padStart(2, "0")}</b><div><Button size="icon" variant="ghost" disabled={index === 0} onClick={() => setRoute(value => { const stops = [...value.stops]; [stops[index - 1], stops[index]] = [stops[index], stops[index - 1]]; return { ...value, stops }; })}><ArrowUp /></Button><Button size="icon" variant="ghost" disabled={route.stops.length <= 2} onClick={() => setRoute(value => ({ ...value, stops: value.stops.filter((_, stopIndex) => stopIndex !== index) }))}><Trash2 /></Button></div></header><div><label>CITY<Input value={stop.name} onChange={event => editStop(index, "name", event.target.value)} /></label><label>STATE<Input value={stop.state} onChange={event => editStop(index, "state", event.target.value)} /></label><label>LATITUDE<Input type="number" step=".0001" value={stop.lat} onChange={event => editStop(index, "lat", event.target.value)} /></label><label>LONGITUDE<Input type="number" step=".0001" value={stop.lon} onChange={event => editStop(index, "lon", event.target.value)} /></label><label>ROUTE KM<Input type="number" value={stop.km} onChange={event => editStop(index, "km", event.target.value)} /></label><label className="wide">PUBLIC NOTE<Input value={stop.note} onChange={event => editStop(index, "note", event.target.value)} /></label></div></article>)}</div><Button className="admin-save-mobile" onClick={saveRoute}>Publish route</Button>
       </TabsContent>
-      <TabsContent value="messages" className="admin-panel"><div className="admin-heading"><div><h2>Public reply sheet</h2><p>Yellow cells are private. Replies appear publicly.</p></div><Button variant="outline" onClick={() => exportCsv("messages")}><Download /> Export CSV</Button></div><div className="admin-table"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Name</TableHead><TableHead>Message</TableHead><TableHead>Private contact</TableHead><TableHead>Status</TableHead><TableHead>Public reply</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{messages.map(row => <TableRow key={row.id}><TableCell data-label="Date">{new Date(row.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell data-label="Type">{row.type}</TableCell><TableCell data-label="Name">{row.name}<small>{row.place}</small></TableCell><TableCell data-label="Message" className="wrap-cell">{row.message}</TableCell><TableCell data-label="Private contact" className="private-cell">{row.contact}</TableCell><TableCell data-label="Status">{row.status}</TableCell><TableCell data-label="Public reply"><Textarea value={replies[row.id] || ""} onChange={event => setReplies(value => ({ ...value, [row.id]: event.target.value }))} /></TableCell><TableCell data-label="Actions"><div className="table-actions"><Button onClick={() => messageAction(row.id, "reply")}>Reply</Button><Button variant="outline" onClick={() => messageAction(row.id, "publish")}>Publish</Button><Button variant="destructive" onClick={() => messageAction(row.id, "hide")}>Hide</Button></div></TableCell></TableRow>)}</TableBody></Table></div>
+      <TabsContent value="messages" className="admin-panel"><div className="admin-heading"><div><h2>Public reply sheet</h2><p>Type a reply and press Reply — it appears under the message on the public wall straight away. Yellow cells are private and never published.</p></div><Button variant="outline" onClick={() => exportCsv("messages")}><Download /> Export CSV</Button></div><div className="admin-table"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Name</TableHead><TableHead>Message</TableHead><TableHead>Private contact</TableHead><TableHead>Status</TableHead><TableHead>Public reply</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{messages.map(row => <TableRow key={row.id}><TableCell data-label="Date">{new Date(row.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell data-label="Type">{row.type}</TableCell><TableCell data-label="Name">{row.name}<small>{row.place}</small></TableCell><TableCell data-label="Message" className="wrap-cell">{row.message}</TableCell><TableCell data-label="Private contact" className="private-cell">{row.contact}</TableCell><TableCell data-label="Status"><span className={`status-chip ${row.status}`}>{row.status === "public" ? "On the wall" : row.status === "hidden" ? "Hidden" : "Held"}</span></TableCell><TableCell data-label="Public reply"><Textarea value={replies[row.id] || ""} onChange={event => setReplies(value => ({ ...value, [row.id]: event.target.value }))} /></TableCell><TableCell data-label="Actions"><div className="table-actions"><Button disabled={busyRow === row.id} onClick={() => messageAction(row.id, "reply")}>{busyRow === row.id ? "Saving…" : row.reply ? "Update reply" : "Reply"}</Button>{row.status !== "public" && <Button variant="outline" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "publish")}>Put on the wall</Button>}{row.status !== "hidden" && <Button variant="destructive" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "hide")}>Hide</Button>}</div>{rowNote[row.id] && <p className="row-note" role="status">{rowNote[row.id]}</p>}</TableCell></TableRow>)}</TableBody></Table></div>
       </TabsContent>
       <TabsContent value="book" className="admin-panel"><div className="admin-heading"><div><h2>Book pre-registration sheet</h2><p>Private contact details are visible only here.</p></div><Button variant="outline" onClick={() => exportCsv("book")}><Download /> Export CSV</Button></div><div className="admin-table"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Name</TableHead><TableHead>Private contact</TableHead><TableHead>City</TableHead><TableHead>Format</TableHead><TableHead>Note</TableHead></TableRow></TableHeader><TableBody>{books.map(row => <TableRow key={row.id}><TableCell data-label="Date">{new Date(row.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell data-label="Name">{row.name}</TableCell><TableCell data-label="Private contact" className="private-cell">{row.contact}</TableCell><TableCell data-label="City">{row.city}</TableCell><TableCell data-label="Format">{row.format}</TableCell><TableCell data-label="Note" className="wrap-cell">{row.note}</TableCell></TableRow>)}</TableBody></Table></div>
       </TabsContent>

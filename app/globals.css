@@ -41,3 +41,9 @@
 
 .offline-bar{position:fixed;left:0;right:0;bottom:66px;z-index:45;background:var(--red);color:#fff;padding:10px 14px;font-size:11px;font-weight:900;text-align:center;line-height:1.35}
 @media(min-width:700px){.offline-bar{bottom:0}}
+
+.status-chip{display:inline-block;padding:3px 8px;font-size:8px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;border:1px solid currentColor;white-space:nowrap}
+.status-chip.public{color:#2e7224;background:#e2f0dd}
+.status-chip.hidden{color:#8a3a12;background:#f6e2d6}
+.status-chip.held{color:#7a5a10;background:#f7edcf}
+.row-note{margin:8px 0 0;font-size:11px;font-weight:900;color:#2e7224;line-height:1.35}
