@@ -1,14 +1,16 @@
 {
-  "mode": "preparation",
-  "status": "Preparing",
-  "day": 0,
-  "distanceToday": 0,
-  "distanceTotal": 0,
+  "mode": "live",
+  "status": "Resting",
+  "day": 1,
+  "distanceToday": 5,
+  "distanceTotal": 12,
+  "routeProgressKm": 0,
+  "offRouteKm": 218,
   "stepsToday": 0,
   "walkingMinutes": 0,
-  "currentPlace": "Lucknow, Uttar Pradesh",
-  "lat": 26.8467,
-  "lon": 80.9462,
+  "currentPlace": "Bettiah, Bihar",
+  "lat": 26.810885,
+  "lon": 84.5193666,
   "temperature": null,
   "altitude": null,
   "battery": null,
@@ -18,5 +20,5 @@
   "latestText": "Training, saving, finding partners and preparing to cross India at walking speed.",
   "latestUrl": "/journal",
   "sponsorName": "Partnership open",
-  "updatedAt": null
+  "updatedAt": "2026-08-29T15:39:41.564Z"
 }

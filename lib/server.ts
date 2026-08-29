@@ -7,6 +7,33 @@ export function isAdmin(request: Request) {
   return Boolean(expected && supplied && supplied === expected);
 }
 
+/**
+ * A phone app posting positions by itself, rather than Navneet in the admin
+ * panel.
+ *
+ * A tracking app cannot be handed the admin passcode: it has to be typed into a
+ * settings box on a phone, it travels in a URL, and anything that leaks it
+ * would then own the whole site. TRACK_KEY is a separate value that can do
+ * exactly one thing - add positions - so losing it costs a false dot on a map
+ * and nothing else. Change it and the old one stops working.
+ *
+ * Accepted in the query string as well as a header, because most tracker apps
+ * only offer a URL box.
+ */
+export function isTracker(request: Request) {
+  const runtime = env as unknown as { TRACK_KEY?: string };
+  const expected = runtime.TRACK_KEY?.trim() ?? "";
+  if (expected.length < 12) return false;
+  const url = new URL(request.url);
+  const supplied = (url.searchParams.get("key") ?? request.headers.get("x-track-key") ?? "").trim();
+  if (supplied.length !== expected.length) return false;
+  // Compare every character regardless, so a wrong key cannot be narrowed down
+  // by how quickly it is rejected.
+  let same = 0;
+  for (let index = 0; index < expected.length; index += 1) same |= expected.charCodeAt(index) ^ supplied.charCodeAt(index);
+  return same === 0;
+}
+
 export function clean(value: unknown, max = 500) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, max);
 }

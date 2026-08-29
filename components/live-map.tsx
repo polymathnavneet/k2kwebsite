@@ -22,6 +22,8 @@ type LeafletMap = {
   fitBounds: (bounds: unknown, options?: unknown) => void;
   setMaxBounds: (bounds: unknown) => void;
   setMinZoom: (zoom: number) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
   remove: () => void;
   invalidateSize: () => void;
   getZoom: () => number;
@@ -97,7 +99,7 @@ export function LiveMap({ stops, journey, compact = false }: { stops: RouteStop[
       if (!L || !holder.current) { setFailed(true); return; }
 
       leafletRef.current = L;
-      const map = L.map(holder.current, { scrollWheelZoom: !compact, zoomControl: !compact });
+      const map = L.map(holder.current, { scrollWheelZoom: !compact, zoomControl: false });
       map.setView([22.5, 79], 5);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 18,
@@ -211,16 +213,24 @@ export function LiveMap({ stops, journey, compact = false }: { stops: RouteStop[
 
   if (failed) return <RouteMap stops={stops} journey={journey} compact={compact} />;
 
+  // Any of these means the reader is working the map on purpose, so it must
+  // stop re-framing itself from under them.
+  const hold = () => { touchedRef.current = true; };
+
   return (
     <div className={compact ? "live-map compact" : "live-map"}>
       <div ref={holder} className="live-map-canvas" />
       {!ready && <div className="live-map-loading">Loading the map…</div>}
-      <button
-        className="locate-button"
-        type="button"
-        aria-label="Centre on Navneet"
-        onClick={() => mapRef.current?.setView([journey.lat, journey.lon], 11)}
-      >⌖</button>
+      <div className="map-controls">
+        <button type="button" aria-label="Zoom in" onClick={() => { hold(); mapRef.current?.zoomIn(); }}>+</button>
+        <button type="button" aria-label="Zoom out" onClick={() => { hold(); mapRef.current?.zoomOut(); }}>−</button>
+        <button
+          className="locate-button"
+          type="button"
+          aria-label="Centre on Navneet"
+          onClick={() => { hold(); mapRef.current?.setView([journey.lat, journey.lon], 11); }}
+        >⌖</button>
+      </div>
     </div>
   );
 }

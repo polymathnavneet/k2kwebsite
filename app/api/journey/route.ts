@@ -2,13 +2,25 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { journey } from "@/db/schema";
 import { defaultJourney } from "@/lib/defaults";
+import seed from "@/data/journey.json";
 import { mirrorJourney } from "@/lib/mirror";
 import { clamp, clean, isAdmin } from "@/lib/server";
 
 export async function GET() {
   const db = getDb();
   const [row] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
-  return Response.json(row ? { ...row, id: undefined } : defaultJourney);
+  if (row) return Response.json({ ...row, id: undefined });
+
+  // A database that has never been written to is not the same as a walk that
+  // has not started. Moving the site to new hosting left exactly that: an empty
+  // table, and a homepage claiming Lucknow while Navneet stood in Bettiah.
+  //
+  // data/journey.json is the last published position, kept in the repository so
+  // both assistants can read and edit it. Planting it here means the position
+  // survives the database being replaced, rather than needing a phone with
+  // signal to re-send it.
+  await db.insert(journey).values({ id: 1, ...seed }).onConflictDoNothing();
+  return Response.json(seed ?? defaultJourney);
 }
 
 export async function POST(request: Request) {

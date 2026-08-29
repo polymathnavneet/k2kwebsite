@@ -6,6 +6,7 @@ import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import { dayOfWalk, distanceKm } from "@/lib/geo";
 import { reverseGeocode } from "@/lib/places";
 import { alreadyOnRoute, insertionKm, nextStopAfter, projectOntoRoute } from "@/lib/route-math";
+import { OFF_ROUTE_KM } from "@/lib/position";
 import { istDayKey } from "@/lib/time";
 import type { RouteStop } from "@/lib/types";
 
@@ -39,7 +40,6 @@ export const MAX_WALK_KMH = 12;
 /** A fix this imprecise says nothing useful about distance. */
 export const MAX_ACCURACY_M = 500;
 /** Beyond this from the planned line, the route is treated as having changed. */
-export const OFF_ROUTE_KM = 12;
 
 export type TrackPoint = { lat: number; lon: number; at?: string; accuracy?: number | null };
 

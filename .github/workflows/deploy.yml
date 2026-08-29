@@ -78,17 +78,24 @@ jobs:
       # The check for an empty passcode is inside the script on purpose: a step's
       # `if:` cannot read the secrets context, and using it there makes GitHub
       # reject the whole file before a single step runs.
-      - name: Set the admin passcode
+      - name: Set the passcodes
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          TRACK_KEY: ${{ secrets.TRACK_KEY }}
         run: |
-          if [ -z "$ADMIN_TOKEN" ]; then
-            echo "No ADMIN_TOKEN secret is set. Leaving the worker's current passcode alone."
-            exit 0
-          fi
-          printf '%s' "$ADMIN_TOKEN" | npx wrangler secret put ADMIN_TOKEN --config dist/server/wrangler.json
+          put() {
+            if [ -z "$2" ]; then
+              echo "No $1 secret is set. Leaving the worker's current value alone."
+              return 0
+            fi
+            printf '%s' "$2" | npx wrangler secret put "$1" --config dist/server/wrangler.json
+          }
+          put ADMIN_TOKEN "$ADMIN_TOKEN"
+          # Lets a phone tracker app add positions and nothing else. Separate
+          # from the admin passcode on purpose: it lives in a URL on a phone.
+          put TRACK_KEY "$TRACK_KEY"
 
       # Put the address on the run's summary page, so finding it does not mean
       # reading a log.

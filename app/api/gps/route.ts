@@ -1,5 +1,5 @@
 import { getDb } from "@/db";
-import { isAdmin } from "@/lib/server";
+import { isAdmin, isTracker } from "@/lib/server";
 import { processPoints } from "@/lib/tracking";
 
 /**
@@ -10,7 +10,7 @@ import { processPoints } from "@/lib/tracking";
  * passed, and whether the route now looks wrong. See lib/tracking.ts.
  */
 export async function POST(request: Request) {
-  if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: Record<string, unknown>;
   try {
