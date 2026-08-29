@@ -80,6 +80,8 @@ export const defaultJourney: Journey = {
   day: 0,
   distanceToday: 0,
   distanceTotal: 0,
+  routeProgressKm: 0,
+  offRouteKm: 0,
   stepsToday: 0,
   walkingMinutes: 0,
   currentPlace: "Lucknow, Uttar Pradesh",
