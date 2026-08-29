@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import type { JournalEntry } from "@/lib/types";
 
-const shown = (day: string) =>
-  new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${day}T12:00:00`));
+import { formatWalkDate, istNoon } from "@/lib/time";
+
+const shown = (day: string) => formatWalkDate(istNoon(day));
 
 /** The field notes, newest first, written a tap at a time from the admin panel. */
 export function JournalList() {

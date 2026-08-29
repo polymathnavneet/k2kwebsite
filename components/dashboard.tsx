@@ -1,34 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, LocateFixed, Share2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { defaultJourney, defaultRoute } from "@/lib/defaults";
-import type { Journey, WalkRoute } from "@/lib/types";
+import { useLiveJourney } from "@/hooks/use-live-journey";
 import { LiveMap } from "./live-map";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 
 export function Dashboard() {
-  const [journey, setJourney] = useState<Journey>(defaultJourney);
-  const [route, setRoute] = useState<WalkRoute>(defaultRoute);
+  const { journey, route } = useLiveJourney();
   const [notice, setNotice] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [journeyResponse, routeResponse] = await Promise.all([fetch("/api/journey"), fetch("/api/route")]);
-        if (journeyResponse.ok) setJourney(await journeyResponse.json());
-        if (routeResponse.ok) setRoute(await routeResponse.json());
-      } catch {}
-    };
-    load();
-    const interval = setInterval(load, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const progress = Math.min(100, (journey.distanceTotal / route.totalDistance) * 100);
-  const next = useMemo(() => route.stops.find(stop => stop.km > journey.distanceTotal) ?? route.stops.at(-1), [route, journey.distanceTotal]);
+  // Progress and the next stop follow the position along the route, not the
+  // raw distance walked. On a detour those differ, and the raw figure would
+  // claim towns had been passed that are still ahead.
+  const along = journey.mode === "live" ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
+  const progress = Math.min(100, (along / route.totalDistance) * 100);
+  const next = useMemo(() => route.stops.find(stop => stop.km > along) ?? route.stops.at(-1), [route, along]);
 
   async function react(type: "cheer" | "follow") {
     const key = `alw-${type}-${type === "cheer" ? new Date().toISOString().slice(0, 10) : "saved"}`;

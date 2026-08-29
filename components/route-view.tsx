@@ -1,23 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { defaultJourney, defaultRoute } from "@/lib/defaults";
-import { dayOfWalk, livePace } from "@/lib/geo";
-import type { Journey, WalkRoute } from "@/lib/types";
+import { useMemo } from "react";
+import { useLiveJourney } from "@/hooks/use-live-journey";
+import { calendarPace, dayOfWalk, livePace } from "@/lib/geo";
+import { formatWalkDate } from "@/lib/time";
 import { LiveMap } from "./live-map";
 
-const date = (value: Date) => new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(value);
+const date = formatWalkDate;
 
 export function RouteView() {
-  const [route, setRoute] = useState<WalkRoute>(defaultRoute);
-  const [journey, setJourney] = useState<Journey>(defaultJourney);
-
-  useEffect(() => {
-    Promise.all([fetch("/api/route"), fetch("/api/journey")]).then(async ([routeResponse, journeyResponse]) => {
-      if (routeResponse.ok) setRoute(await routeResponse.json());
-      if (journeyResponse.ok) setJourney(await journeyResponse.json());
-    }).catch(() => {});
-  }, []);
+  const { journey, route } = useLiveJourney();
 
   const estimate = useMemo(() => {
     const live = journey.mode === "live";
@@ -27,7 +19,9 @@ export function RouteView() {
     // Two different measures, deliberately. Pace comes from the distance the
     // legs actually covered; which town is next comes from how far along the
     // route that position sits. A detour makes them differ.
-    const pace = live ? livePace(journey.distanceTotal, day, route.paceKmPerDay) : route.paceKmPerDay;
+    // The planned figure is per walking day; projecting a finish needs the
+    // calendar rate, which allows for rest days.
+    const pace = live ? livePace(journey.distanceTotal, day, route.paceKmPerDay) : calendarPace(route.paceKmPerDay);
     const along = live ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
     const base = live ? new Date() : new Date(`${route.startDate}T12:00:00`);
     const stops = route.stops.map(stop => ({

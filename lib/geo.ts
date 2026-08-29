@@ -1,3 +1,5 @@
+import { walkDay } from "@/lib/time";
+
 /** Distance in kilometres between two points on the earth. */
 export function distanceKm(fromLat: number, fromLon: number, toLat: number, toLon: number) {
   const R = 6371;
@@ -10,12 +12,27 @@ export function distanceKm(fromLat: number, fromLon: number, toLat: number, toLo
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-/** Whole days from the start date to now, counting the first day as day 1. */
+/**
+ * Whole days from the start date to now, counting the first day as day 1.
+ * Indian dates, so every reader sees the same expedition day.
+ */
 export function dayOfWalk(startDate: string, now = new Date()) {
-  const start = new Date(`${startDate}T00:00:00`);
-  if (Number.isNaN(start.getTime())) return 0;
-  const days = Math.floor((now.getTime() - start.getTime()) / 86400000) + 1;
-  return days < 1 ? 0 : days;
+  return walkDay(startDate, now);
+}
+
+/**
+ * How many kilometres a week actually covers.
+ *
+ * A planned pace of 25 km/day is a walking-day figure, not a calendar-day one.
+ * Treating it as seven days a week quietly promises a finish nobody can reach.
+ * One rest day in seven is the working assumption.
+ */
+export const REST_DAYS_PER_WEEK = 1;
+export const WALKING_DAYS_PER_WEEK = 7 - REST_DAYS_PER_WEEK;
+
+/** Planned pace converted from a walking-day rate to a calendar-day rate. */
+export function calendarPace(walkingDayPace: number) {
+  return (walkingDayPace * WALKING_DAYS_PER_WEEK) / 7;
 }
 
 /**
@@ -23,11 +40,19 @@ export function dayOfWalk(startDate: string, now = new Date()) {
  *
  * Before the walk, and for the first couple of days when one long or short day
  * would skew everything, this is the planned pace. After that it is the pace
- * actually being walked, clamped to a believable range so a bad GPS reading
- * cannot throw the finish date into next year.
+ * actually being walked.
+ *
+ * There is an upper bound but deliberately no lower one. A slow week is a real
+ * thing that happens to a real person - illness, heat, a bad ankle - and the
+ * arrival dates should tell the truth about it rather than quietly pretending
+ * a minimum. The upper bound only stops a bad reading inventing a finish that
+ * has not happened.
  */
+export const MAX_CREDIBLE_PACE = 50;
+
 export function livePace(distanceTotal: number, day: number, plannedPace: number) {
   if (day < 3 || distanceTotal <= 0) return plannedPace;
   const actual = distanceTotal / day;
-  return Math.max(8, Math.min(50, actual));
+  // A floor here would hide a slow week instead of reporting it.
+  return Math.min(MAX_CREDIBLE_PACE, actual);
 }

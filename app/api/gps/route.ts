@@ -1,5 +1,4 @@
 import { getDb } from "@/db";
-import { mirrorJourney } from "@/lib/mirror";
 import { isAdmin } from "@/lib/server";
 import { processPoints } from "@/lib/tracking";
 
@@ -26,9 +25,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "That does not look like a valid position." }, { status: 400 });
   }
 
+  // GPS deliberately does not mirror to GitHub. Continuous tracking would
+  // mean a commit every fix - thousands a week, and straight into GitHub's
+  // rate limits. The journey is mirrored when it is published from the
+  // admin panel instead, which is when it is worth recording.
   const db = getDb();
   const result = await processPoints(db, [{ lat, lon }]);
-  await mirrorJourney(db);
 
   return Response.json({ ok: true, ...result });
 }

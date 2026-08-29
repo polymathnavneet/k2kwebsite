@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import type { JournalEntry, Journey, MediaItem, PublicMessage, RouteStop, RouteSuggestion, WalkRoute } from "@/lib/types";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/embed";
+import { Assistant } from "./assistant";
 
 type AdminMessage = PublicMessage & { contact: string };
 type BookRow = { id: string; name: string; contact: string; city: string; format: string; note: string; createdAt: string };
@@ -39,6 +40,8 @@ export function AdminConsole() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [daysSince, setDaysSince] = useState<number | null>(null);
   const [answer, setAnswer] = useState("");
+  const [mind, setMind] = useState("");
+  const [askMind, setAskMind] = useState<{ place: string; reason: string } | null>(null);
 
   async function request<T>(url: string, options: RequestInit = {}) {
     const cleanToken = token.trim();
@@ -76,7 +79,12 @@ export function AdminConsole() {
         [row.id, current[row.id] !== undefined ? current[row.id] : (row.reply || "")])));
       setToken(token.trim()); setConnected(true); localStorage.setItem("alw-admin-token", token.trim());
       setStatus(`Synced · ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`);
-    } catch (error) { setConnected(false); setStatus(error instanceof Error ? `${error.message}. Check the passcode.` : "Could not connect"); }
+    } catch (error) {
+      setConnected(false);
+      const message = error instanceof Error ? error.message : "Could not connect";
+      // Only a rejected passcode is a passcode problem.
+      setStatus(/unauthor/i.test(message) ? "That passcode was not accepted." : `${message}. Check your connection.`);
+    }
   }
 
   useEffect(() => {
@@ -97,6 +105,10 @@ export function AdminConsole() {
         });
         setJourney(result.journey);
         setStatus(result.reason);
+        // The phone is already in your hand and you have just looked at it.
+        // That is the moment a question actually gets answered.
+        setAskMind({ place: result.journey.currentPlace || "here", reason: result.reason });
+        setMind("");
         // A new place found on the road becomes a question, not a silent edit.
         if (result.suggestion) setSuggestions(current => [result.suggestion as RouteSuggestion, ...current]);
       } catch (error) { setStatus(error instanceof Error ? error.message : "Could not sync GPS"); }
@@ -154,6 +166,24 @@ export function AdminConsole() {
       setToday(current => current && { ...current, answered: true });
       setDaysSince(0);
       setStatus(result.replaced ? "Today's entry updated. It is live on the journal." : "Published to the journal.");
+    } catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish"); }
+  }
+
+  // A one-line thought, published where you stood when you thought it.
+  async function saveMind() {
+    if (mind.trim().length < 2) return setStatus("Write a word or two first.");
+    setStatus("Publishing…");
+    try {
+      await request("/api/journal", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "answer", body: mind, question: "What was on your mind here?", place: askMind?.place }),
+      });
+      setAskMind(null);
+      setMind("");
+      setDaysSince(0);
+      setToday(current => current && { ...current, answered: true });
+      setStatus("Published to the journal.");
     } catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish"); }
   }
 
@@ -250,11 +280,19 @@ export function AdminConsole() {
     const rows = kind === "messages" ? messages : books;
     if (!rows.length) return;
     const keys = kind === "messages" ? ["createdAt", "type", "name", "place", "message", "contact", "status", "reply"] : ["createdAt", "name", "contact", "city", "format", "note"];
-    const csv = [keys.join(","), ...rows.map(row => keys.map(key => `"${String((row as unknown as Record<string, unknown>)[key] ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
+    // A cell starting = + - or @ is executed as a formula by Excel and Sheets,
+    // so a message could run code on the machine that opens the export. A
+    // leading apostrophe makes the spreadsheet treat it as text.
+    const safe = (value: unknown) => {
+      const text = String(value ?? "");
+      const escaped = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+      return `"${escaped.replace(/"/g, '""')}"`;
+    };
+    const csv = [keys.join(","), ...rows.map(row => keys.map(key => safe((row as unknown as Record<string, unknown>)[key])).join(","))].join("\n");
     const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); link.download = `a-long-walk-${kind}.csv`; link.click(); URL.revokeObjectURL(link.href);
   }
 
-  if (!connected) return <section className="admin-login"><h1>Your walk.<br />One control room.</h1><p>Use the private passcode once. It stays only on this phone. Extra spaces are ignored.</p><Input type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={token} onChange={event => setToken(event.target.value)} placeholder="Private passcode" /><Button onClick={loadAll} disabled={token.trim().length < 8}>Open control room</Button><p role="status">{status}</p></section>;
+  if (!connected) return <section className="admin-login"><h1>Your walk.<br />One control room.</h1><p>Use the private passcode once. It stays only on this phone. Extra spaces are ignored.</p><form onSubmit={event => { event.preventDefault(); loadAll(); }}><Input type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={token} onChange={event => setToken(event.target.value)} placeholder="Private passcode" /><Button type="submit" disabled={token.trim().length < 8}>Open control room</Button></form><p role="status">{status}</p></section>;
 
   return <section className="admin-app">
     <div className="admin-bar"><div><b>A LONG WALK</b><span>{status}</span></div><Button variant="outline" onClick={loadAll}><RefreshCw /> Refresh</Button><Button variant="outline" onClick={pullFromGithub}><CloudDownload /> Pull edits from GitHub</Button><Button variant="outline" onClick={() => { localStorage.removeItem("alw-admin-token"); setConnected(false); setToken(""); }}>Change passcode</Button></div>
@@ -297,6 +335,16 @@ export function AdminConsole() {
         <Button variant="outline" onClick={syncGps}><LocateFixed /> Where am I?</Button>
       </div>
       <p className="today-where">Showing you at <b>{journey.currentPlace || "nowhere yet"}</b>. Tap <b>Where am I?</b> to set it from this phone&apos;s GPS.</p>
+    </section>}
+    <Assistant token={token.trim()} />
+{askMind && <section className="mind-card">
+      <div className="mind-head"><b>You are in {askMind.place}</b><button type="button" aria-label="Not now" onClick={() => setAskMind(null)}>✕</button></div>
+      <p className="mind-q">What&apos;s on your mind?</p>
+      <Textarea value={mind} onChange={event => setMind(event.target.value)} placeholder="One line is plenty. It publishes with this place attached." />
+      <div className="mind-actions">
+        <Button onClick={saveMind} disabled={mind.trim().length < 2}>Publish it</Button>
+        <Button variant="outline" onClick={() => setAskMind(null)}>Not now</Button>
+      </div>
     </section>}
     <Tabs defaultValue="journey">
       <TabsList className="admin-tabs"><TabsTrigger value="journey">Journey</TabsTrigger><TabsTrigger value="route">Route</TabsTrigger><TabsTrigger value="messages">Messages {messages.length ? `(${messages.length})` : ""}</TabsTrigger><TabsTrigger value="journal">Journal {entries.length ? `(${entries.length})` : ""}</TabsTrigger><TabsTrigger value="media">Pictures {gallery.length ? `(${gallery.length})` : ""}</TabsTrigger><TabsTrigger value="book">Book {books.length ? `(${books.length})` : ""}</TabsTrigger></TabsList>
