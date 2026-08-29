@@ -20,6 +20,7 @@ export const DATA_FILES = {
   messages: "data/messages.json",
   book: "data/book.json",
   journey: "data/journey.json",
+  media: "data/media.json",
 } as const;
 
 export type DataFile = keyof typeof DATA_FILES;
@@ -66,9 +67,27 @@ const decodeBase64 = (value: string) => {
   return new TextDecoder().decode(bytes);
 };
 
-/** Read one data file from the repository. Returns null if it is not there. */
+/**
+ * Read one data file from the repository. Returns null if it is not there.
+ *
+ * With no token, the plain public file is fetched from raw.githubusercontent.com.
+ * The authenticated Contents API refuses anonymous calls from shared hosting
+ * (403), and it is only needed for the file's sha, which in turn is only needed
+ * to write. So the no-token path avoids it entirely, and pulling edits works
+ * with nothing set up.
+ */
 export async function readData<T>(file: DataFile): Promise<{ data: T | null; sha: string | null }> {
-  const url = `${API}/repos/${repo()}/contents/${DATA_FILES[file]}?ref=${encodeURIComponent(branch())}`;
+  const path = DATA_FILES[file];
+
+  if (!canWrite()) {
+    const raw = `https://raw.githubusercontent.com/${repo()}/${branch()}/${path}`;
+    const plain = await fetch(raw, { headers: { "user-agent": "a-long-walk" }, cache: "no-store" });
+    if (plain.status === 404) return { data: null, sha: null };
+    if (!plain.ok) throw new Error(`Could not read ${path} from GitHub (${plain.status})`);
+    return { data: JSON.parse(await plain.text()) as T, sha: null };
+  }
+
+  const url = `${API}/repos/${repo()}/contents/${path}?ref=${encodeURIComponent(branch())}`;
   const response = await fetch(url, { headers: headers() });
   if (response.status === 404) return { data: null, sha: null };
   if (!response.ok) throw new Error(`GitHub read failed (${response.status})`);

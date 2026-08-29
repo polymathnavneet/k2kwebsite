@@ -1,7 +1,7 @@
 import { asc, desc, eq, ne, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
-import { bookRegistrations, journey, messages, routeConfig, routeStops } from "@/db/schema";
+import { bookRegistrations, journey, media, messages, routeConfig, routeStops } from "@/db/schema";
 import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import { githubEnabled, writeData } from "@/lib/github";
 import type { Journey, WalkRoute } from "@/lib/types";
@@ -85,5 +85,20 @@ export async function mirrorBook(db: Db) {
       updatedAt: new Date().toISOString(),
     },
     "Update the pre-registration count"
+  );
+}
+
+export async function mirrorMedia(db: Db) {
+  if (!githubEnabled()) return;
+  const rows = await db.select().from(media).orderBy(asc(media.sortOrder), desc(media.createdAt)).limit(500);
+  await writeData(
+    "media",
+    {
+      note: "Photos and videos, as links. Instagram and YouTube host the file; this only records where it is. Add or remove entries here and press 'Pull edits from GitHub' in the admin panel.",
+      instagram: "https://www.instagram.com/polymath_navneet/",
+      updatedAt: new Date().toISOString(),
+      items: rows,
+    },
+    `Update the gallery (${rows.length} items)`
   );
 }

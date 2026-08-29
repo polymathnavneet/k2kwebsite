@@ -63,4 +63,33 @@ globalThis.__env = { GITHUB_TOKEN: "fake", GITHUB_REPO: "owner/repo" };
 globalThis.fetch = async () => { throw new Error("network down"); };
 assert.equal(await gh.writeData("route", payload, "x"), false, "an outage must not throw into the request");
 console.log("✓ GitHub outage swallowed - a visitor's message is never lost\n");
+// --- reading with NO token must use the plain public file --------------------
+// The authenticated Contents API refuses anonymous calls from shared hosting
+// with a 403, so the no-token path must not touch it at all. This is exactly
+// the bug that shipped: the helper existed but the read never used it.
+globalThis.__env = { GITHUB_REPO: "owner/repo" };
+const seen = [];
+globalThis.fetch = async (url) => {
+  seen.push(String(url));
+  if (String(url).startsWith("https://raw.githubusercontent.com/")) {
+    return new Response(JSON.stringify({ title: "A Long Walk", stops: [{ name: "Kanyakumari" }] }), { status: 200 });
+  }
+  return new Response("forbidden", { status: 403 });
+};
+
+const anon = await gh.readData("route");
+console.log("  no-token read fetched:", seen[0]);
+assert.equal(seen.length, 1, "a no-token read should make exactly one request");
+assert.ok(seen[0].startsWith("https://raw.githubusercontent.com/owner/repo/main/data/route.json"),
+  `no-token read must use the raw public file, got ${seen[0]}`);
+assert.ok(!seen[0].includes("api.github.com"), "a no-token read must never call the authenticated API");
+assert.equal(anon.data.title, "A Long Walk");
+assert.equal(anon.sha, null, "there is no sha without the API, and none is needed to read");
+console.log("✓ with no token, reads go to the plain public file and never to the authenticated API");
+
+// A missing file still reads as null on that path.
+globalThis.fetch = async () => new Response("Not Found", { status: 404 });
+assert.deepEqual(await gh.readData("messages"), { data: null, sha: null });
+console.log("✓ a missing file still reads as null with no token\n");
+
 console.log("ALL GITHUB BRIDGE CHECKS PASSED");

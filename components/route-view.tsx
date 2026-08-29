@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import { dayOfWalk, livePace } from "@/lib/geo";
 import type { Journey, WalkRoute } from "@/lib/types";
-import { RouteMap } from "./route-map";
+import { LiveMap } from "./live-map";
 
 const date = (value: Date) => new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(value);
 
@@ -50,7 +50,7 @@ export function RouteView() {
 
   return <>
     <section className="route-live-grid shell">
-      <RouteMap stops={route.stops} journey={journey} />
+      <LiveMap stops={route.stops} journey={journey} />
       <div className="route-summary">
         <article><small>{estimate.live ? "WALKED" : "WORKING DISTANCE"}</small><strong>{estimate.live ? `${estimate.walked.toLocaleString("en-IN")} / ${route.totalDistance.toLocaleString("en-IN")} km` : `${route.totalDistance.toLocaleString("en-IN")} km`}</strong></article>
         <article><small>{estimate.live ? "LIVE PACE" : "PLANNED PACE"}</small><strong>{estimate.pace.toFixed(1)} km/day</strong></article>

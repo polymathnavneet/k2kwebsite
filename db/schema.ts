@@ -96,3 +96,34 @@ export const routeSuggestions = sqliteTable("route_suggestions", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   decidedAt: text("decided_at"),
 });
+
+/**
+ * Photos and videos shown on the site. Nothing is uploaded or stored here -
+ * only a link. Instagram and YouTube already host and stream the file, and a
+ * link costs nothing, never expires from a storage bill, and cannot fill up.
+ */
+export const media = sqliteTable("media", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull().default("instagram"),
+  url: text("url").notNull(),
+  caption: text("caption").notNull().default(""),
+  place: text("place").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+/**
+ * The daily entry. One question a day, one answer, published straight to the
+ * journal - so keeping the site alive costs a couple of minutes rather than an
+ * evening of writing.
+ */
+export const journalEntries = sqliteTable("journal_entries", {
+  id: text("id").primaryKey(),
+  day: text("day").notNull(),
+  question: text("question").notNull().default(""),
+  body: text("body").notNull(),
+  place: text("place").notNull().default(""),
+  phase: text("phase").notNull().default("preparation"),
+  published: integer("published").notNull().default(1),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
