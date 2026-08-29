@@ -39,12 +39,13 @@ assert.ok(daysWithRest - daysNoRest > 25, "allowing rest days should move the fi
 console.log("✓ arrival dates allow for a rest day a week instead of promising seven walking days\n");
 
 // --- the walking test, replicating lib/tracking.ts ---------------------------
-const MIN_MOVE_KM = 0.1, MAX_MOVE_KM = 150, MAX_WALK_KMH = 12, MAX_ACCURACY_M = 500;
+const MIN_MOVE_FLOOR_KM = 0.015, MAX_MOVE_KM = 150, MAX_WALK_KMH = 12, MAX_ACCURACY_M = 500;
+const driftThreshold = accuracy => Math.max(MIN_MOVE_FLOOR_KM, accuracy > 0 ? (accuracy * 1.5) / 1000 : 0);
 
 function judge(moved, hours, accuracy = null) {
   const speed = hours > 0 ? moved / hours : null;
   if (accuracy != null && accuracy > MAX_ACCURACY_M) return "imprecise";
-  if (moved < MIN_MOVE_KM) return "drift";
+  if (moved < driftThreshold(accuracy ?? 0)) return "drift";
   if (moved > MAX_MOVE_KM) return "tooFar";
   if (speed !== null && speed > MAX_WALK_KMH) return "tooFast";
   return "counted";
@@ -66,7 +67,8 @@ assert.equal(judge(11.9, 1), "counted", "11.9 km/h still counts");
 assert.equal(judge(12.1, 1), "tooFast", "12.1 km/h does not");
 console.log("  threshold holds at 12 km/h");
 
-assert.equal(judge(0.03, 1), "drift", "a phone on a table is drift");
+assert.equal(judge(0.005, 1), "drift", "5 m is a phone on a table");
+assert.equal(judge(0.008, 1, 30), "drift", "8 m with 30 m accuracy is inside the error");
 assert.equal(judge(400, 6), "tooFar", "a 400 km hop is not walking");
 assert.equal(judge(2, 0.5, 900), "imprecise", "a fix accurate to 900 m cannot prove 2 km");
 console.log("  drift, huge jumps and imprecise fixes -> all rejected");
@@ -83,5 +85,26 @@ const walkHops = Array.from({ length: 30 }, () => judge(0.8, 0.16));
 assert.ok(walkHops.every(v => v === "counted"), "a 24 km walking day must count in full");
 console.log("  300 km bus ride: 0 km counted | 24 km walking day: all counted");
 console.log("✓ the tracker cannot be made to overstate the distance by a vehicle\n");
+
+// --- walking slowly must still count ------------------------------------------
+// The old flat 100 m floor threw away every hop of a slow walk. At 2 km/h with a
+// fix every 30 seconds each hop is about 17 m, which now counts.
+assert.equal(judge(0.017, 30 / 3600, 8), "counted", "17 m in 30 s at 2 km/h is a tired walk, and counts");
+assert.equal(judge(0.017, 30 / 3600, 5), "counted", "the same hop with good accuracy counts");
+console.log("  2 km/h, a fix every 30 s (17 m hops) -> counted");
+
+// A whole slow day must arrive at the right total.
+const slowDay = Array.from({ length: 600 }, () => judge(0.017, 30 / 3600, 8));
+const slowKm = slowDay.filter(v => v === "counted").length * 0.017;
+console.log(`  five hours at 2 km/h -> ${slowKm.toFixed(1)} km counted`);
+assert.ok(slowDay.every(v => v === "counted"), "no part of a slow walk may be discarded");
+assert.ok(Math.abs(slowKm - 10.2) < 0.1, `should be about 10 km, got ${slowKm.toFixed(1)}`);
+
+// And there is no lower bound on the projected pace.
+const pace = (total, day) => day < 3 || total <= 0 ? 25 : Math.min(50, total / day);
+assert.equal(pace(60, 10), 6, "a slow 6 km/day must be reported as 6, not raised to a floor");
+assert.equal(pace(1000, 10), 50, "an impossible 100 km/day is still capped");
+console.log("  6 km/day reported as 6 (no floor) | 100 km/day capped at 50");
+console.log("✓ walking slowly counts in full and is reported honestly\n");
 
 console.log("ALL GPS INTEGRITY CHECKS PASSED");

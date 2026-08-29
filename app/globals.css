@@ -128,3 +128,13 @@
 .today-more{margin-top:11px}
 .today-more summary{font-size:12px;font-weight:800;opacity:.7;cursor:pointer;padding:6px 0}
 .today-more textarea{margin-top:7px}
+
+.mind-card{border:2px solid var(--green);background:#fff;padding:14px;margin-top:10px}
+.mind-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.mind-head b{font-size:10px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:#2e7224}
+.mind-head button{margin-left:auto;border:0;background:none;font-size:17px;line-height:1;padding:6px 8px;min-width:44px;min-height:44px}
+.mind-q{margin:0 0 10px;font-size:20px;line-height:1.2;letter-spacing:-.025em;font-weight:700}
+.mind-card textarea{width:100%;min-height:76px;border:1px solid var(--ink);border-radius:0;background:#fff}
+.mind-actions{display:grid;gap:8px;margin-top:11px}
+.mind-actions button{border-radius:0;width:100%}
+@media(min-width:700px){.mind-actions{grid-template-columns:auto auto;justify-content:start}.mind-actions button{width:auto}}

@@ -1,24 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { defaultJourney, defaultRoute } from "@/lib/defaults";
+import { useMemo } from "react";
+import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, dayOfWalk, livePace } from "@/lib/geo";
 import { formatWalkDate } from "@/lib/time";
-import type { Journey, WalkRoute } from "@/lib/types";
 import { LiveMap } from "./live-map";
 
 const date = formatWalkDate;
 
 export function RouteView() {
-  const [route, setRoute] = useState<WalkRoute>(defaultRoute);
-  const [journey, setJourney] = useState<Journey>(defaultJourney);
-
-  useEffect(() => {
-    Promise.all([fetch("/api/route"), fetch("/api/journey")]).then(async ([routeResponse, journeyResponse]) => {
-      if (routeResponse.ok) setRoute(await routeResponse.json());
-      if (journeyResponse.ok) setJourney(await journeyResponse.json());
-    }).catch(() => {});
-  }, []);
+  const { journey, route } = useLiveJourney();
 
   const estimate = useMemo(() => {
     const live = journey.mode === "live";

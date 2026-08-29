@@ -11,8 +11,21 @@ import type { RouteStop } from "@/lib/types";
 
 type Db = DrizzleD1Database<typeof schema>;
 
-/** Below this, a hop is GPS drift rather than movement. */
-export const MIN_MOVE_KM = 0.1;
+/**
+ * The smallest hop that counts.
+ *
+ * A flat 100 m floor quietly punished slow walking: at 2 km/h with a fix every
+ * thirty seconds each hop is about 17 m, and every one of them was thrown away.
+ * A hop only fails to mean anything when it is smaller than the fix's own
+ * margin of error, so the threshold follows the accuracy instead, with a small
+ * floor for when the phone does not report one.
+ */
+export const MIN_MOVE_FLOOR_KM = 0.015;
+
+export function driftThresholdKm(accuracy?: number | null) {
+  const fromAccuracy = accuracy != null && accuracy > 0 ? (accuracy * 1.5) / 1000 : 0;
+  return Math.max(MIN_MOVE_FLOOR_KM, fromAccuracy);
+}
 /** Above this in a single hop with no timing, it was a vehicle. */
 export const MAX_MOVE_KM = 150;
 /**
@@ -111,7 +124,7 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
 
     let counts = live;
     if (counts && point.accuracy != null && point.accuracy > MAX_ACCURACY_M) { rejected.imprecise += 1; counts = false; }
-    if (counts && moved < MIN_MOVE_KM) { rejected.drift += 1; counts = false; }
+    if (counts && moved < driftThresholdKm(point.accuracy)) { rejected.drift += 1; counts = false; }
     if (counts && moved > MAX_MOVE_KM) { rejected.tooFar += 1; counts = false; }
     if (counts && speedKmh !== null && speedKmh > MAX_WALK_KMH) { rejected.tooFast += 1; counts = false; }
 

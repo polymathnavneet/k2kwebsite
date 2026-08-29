@@ -39,6 +39,8 @@ export function AdminConsole() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [daysSince, setDaysSince] = useState<number | null>(null);
   const [answer, setAnswer] = useState("");
+  const [mind, setMind] = useState("");
+  const [askMind, setAskMind] = useState<{ place: string; reason: string } | null>(null);
 
   async function request<T>(url: string, options: RequestInit = {}) {
     const cleanToken = token.trim();
@@ -102,6 +104,10 @@ export function AdminConsole() {
         });
         setJourney(result.journey);
         setStatus(result.reason);
+        // The phone is already in your hand and you have just looked at it.
+        // That is the moment a question actually gets answered.
+        setAskMind({ place: result.journey.currentPlace || "here", reason: result.reason });
+        setMind("");
         // A new place found on the road becomes a question, not a silent edit.
         if (result.suggestion) setSuggestions(current => [result.suggestion as RouteSuggestion, ...current]);
       } catch (error) { setStatus(error instanceof Error ? error.message : "Could not sync GPS"); }
@@ -159,6 +165,24 @@ export function AdminConsole() {
       setToday(current => current && { ...current, answered: true });
       setDaysSince(0);
       setStatus(result.replaced ? "Today's entry updated. It is live on the journal." : "Published to the journal.");
+    } catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish"); }
+  }
+
+  // A one-line thought, published where you stood when you thought it.
+  async function saveMind() {
+    if (mind.trim().length < 2) return setStatus("Write a word or two first.");
+    setStatus("Publishing…");
+    try {
+      await request("/api/journal", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "answer", body: mind, question: "What was on your mind here?", place: askMind?.place }),
+      });
+      setAskMind(null);
+      setMind("");
+      setDaysSince(0);
+      setToday(current => current && { ...current, answered: true });
+      setStatus("Published to the journal.");
     } catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish"); }
   }
 
@@ -310,6 +334,15 @@ export function AdminConsole() {
         <Button variant="outline" onClick={syncGps}><LocateFixed /> Where am I?</Button>
       </div>
       <p className="today-where">Showing you at <b>{journey.currentPlace || "nowhere yet"}</b>. Tap <b>Where am I?</b> to set it from this phone&apos;s GPS.</p>
+    </section>}
+{askMind && <section className="mind-card">
+      <div className="mind-head"><b>You are in {askMind.place}</b><button type="button" aria-label="Not now" onClick={() => setAskMind(null)}>✕</button></div>
+      <p className="mind-q">What&apos;s on your mind?</p>
+      <Textarea value={mind} onChange={event => setMind(event.target.value)} placeholder="One line is plenty. It publishes with this place attached." />
+      <div className="mind-actions">
+        <Button onClick={saveMind} disabled={mind.trim().length < 2}>Publish it</Button>
+        <Button variant="outline" onClick={() => setAskMind(null)}>Not now</Button>
+      </div>
     </section>}
     <Tabs defaultValue="journey">
       <TabsList className="admin-tabs"><TabsTrigger value="journey">Journey</TabsTrigger><TabsTrigger value="route">Route</TabsTrigger><TabsTrigger value="messages">Messages {messages.length ? `(${messages.length})` : ""}</TabsTrigger><TabsTrigger value="journal">Journal {entries.length ? `(${entries.length})` : ""}</TabsTrigger><TabsTrigger value="media">Pictures {gallery.length ? `(${gallery.length})` : ""}</TabsTrigger><TabsTrigger value="book">Book {books.length ? `(${books.length})` : ""}</TabsTrigger></TabsList>

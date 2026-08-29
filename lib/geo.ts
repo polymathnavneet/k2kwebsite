@@ -40,11 +40,19 @@ export function calendarPace(walkingDayPace: number) {
  *
  * Before the walk, and for the first couple of days when one long or short day
  * would skew everything, this is the planned pace. After that it is the pace
- * actually being walked, clamped to a believable range so a bad GPS reading
- * cannot throw the finish date into next year.
+ * actually being walked.
+ *
+ * There is an upper bound but deliberately no lower one. A slow week is a real
+ * thing that happens to a real person - illness, heat, a bad ankle - and the
+ * arrival dates should tell the truth about it rather than quietly pretending
+ * a minimum. The upper bound only stops a bad reading inventing a finish that
+ * has not happened.
  */
+export const MAX_CREDIBLE_PACE = 50;
+
 export function livePace(distanceTotal: number, day: number, plannedPace: number) {
   if (day < 3 || distanceTotal <= 0) return plannedPace;
   const actual = distanceTotal / day;
-  return Math.max(8, Math.min(50, actual));
+  // A floor here would hide a slow week instead of reporting it.
+  return Math.min(MAX_CREDIBLE_PACE, actual);
 }
