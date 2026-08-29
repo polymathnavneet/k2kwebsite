@@ -37,7 +37,8 @@ export function RouteView() {
       walked: live ? journey.distanceTotal : 0,
       along,
       offRoute: journey.offRouteKm ?? 0,
-      next: stops.find(stop => !stop.reached) ?? stops.at(-1),
+      // Before the first step nothing is "next": the walk starts at the start.
+      next: live ? (stops.find(stop => !stop.reached) ?? stops.at(-1)) : null,
       finish: stops.at(-1)?.eta,
     };
   }, [route, journey]);
@@ -48,7 +49,7 @@ export function RouteView() {
       <div className="route-summary">
         <article><small>{estimate.live ? "WALKED" : "WORKING DISTANCE"}</small><strong>{estimate.live ? `${estimate.walked.toLocaleString("en-IN")} / ${route.totalDistance.toLocaleString("en-IN")} km` : `${route.totalDistance.toLocaleString("en-IN")} km`}</strong></article>
         <article><small>{estimate.live ? "LIVE PACE" : "PLANNED PACE"}</small><strong>{estimate.pace.toFixed(1)} km/day</strong></article>
-        <article><small>NEXT STOP</small><strong>{estimate.next?.name}</strong></article>
+        <article><small>{estimate.live ? "NEXT STOP" : "STARTS AT"}</small><strong>{estimate.live ? estimate.next?.name : route.stops[0]?.name}</strong></article>
         <article><small>ESTIMATED FINISH</small><strong>{estimate.finish ? date(estimate.finish) : "Calculating"}</strong></article>
       </div>
     </section>
