@@ -96,3 +96,18 @@ export const routeSuggestions = sqliteTable("route_suggestions", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   decidedAt: text("decided_at"),
 });
+
+/**
+ * Photos and videos shown on the site. Nothing is uploaded or stored here -
+ * only a link. Instagram and YouTube already host and stream the file, and a
+ * link costs nothing, never expires from a storage bill, and cannot fill up.
+ */
+export const media = sqliteTable("media", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull().default("instagram"),
+  url: text("url").notNull(),
+  caption: text("caption").notNull().default(""),
+  place: text("place").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

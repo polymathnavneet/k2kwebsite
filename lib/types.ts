@@ -67,3 +67,13 @@ export type RouteSuggestion = {
   createdAt: string;
   decidedAt?: string | null;
 };
+
+export type MediaItem = {
+  id: string;
+  kind: "instagram" | "youtube" | "image" | string;
+  url: string;
+  caption: string;
+  place: string;
+  sortOrder: number;
+  createdAt: string;
+};

@@ -20,6 +20,7 @@ export const DATA_FILES = {
   messages: "data/messages.json",
   book: "data/book.json",
   journey: "data/journey.json",
+  media: "data/media.json",
 } as const;
 
 export type DataFile = keyof typeof DATA_FILES;

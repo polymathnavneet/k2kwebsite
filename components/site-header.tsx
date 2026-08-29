@@ -8,6 +8,7 @@ const links = [
   ["Route", "/route"],
   ["Messages", "/messages"],
   ["Journal", "/journal"],
+  ["Pictures", "/gallery"],
   ["Book", "/book"],
   ["Games", "/games"],
   ["Admin", "/admin"],

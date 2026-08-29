@@ -70,3 +70,24 @@
 @media(min-width:700px){.suggestions .fields{grid-template-columns:1.4fr 1fr}.suggestions .decide{grid-template-columns:auto auto;justify-content:start}.progress-strip{grid-template-columns:repeat(4,1fr)}.progress-strip div{border-bottom:0}.progress-strip div:nth-child(2n){border-right:1px solid var(--ink)}.progress-strip div:last-child{border-right:0}}
 
 .off-route-note{border-left:5px solid var(--red);background:var(--paper-2);padding:12px 14px;margin:0 0 22px;font-size:13px;font-weight:700;max-width:760px}
+
+.media-wall{padding-block:38px 80px}
+.media-head{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+.media-head h2{font-size:clamp(30px,8vw,48px);line-height:.9;letter-spacing:-.055em;margin:10px 0 0}
+.ig-link{border:1px solid var(--ink);padding:9px 13px;font-size:11px;font-weight:900;letter-spacing:.06em;white-space:nowrap}
+.ig-link:hover{background:var(--ink);color:#fff}
+.media-grid{display:grid;gap:16px;grid-template-columns:1fr}
+.media-item{margin:0;border:1px solid var(--ink);background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.media-item iframe{width:100%;border:0;display:block;background:var(--paper-2)}
+.media-item.instagram iframe{aspect-ratio:9/13;min-height:520px}
+.media-item.youtube iframe{aspect-ratio:16/9}
+.media-item img{width:100%;height:auto;display:block}
+.media-item figcaption{padding:11px 13px;border-top:1px solid var(--ink);font-size:13px;display:flex;flex-direction:column;gap:3px}
+.media-item figcaption span{font-size:10px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:var(--red)}
+@media(min-width:700px){.media-grid{grid-template-columns:repeat(2,1fr)}.media-item.youtube{grid-column:1/-1}}
+@media(min-width:1050px){.media-grid{grid-template-columns:repeat(3,1fr)}}
+.media-admin{display:grid;gap:10px;margin-bottom:16px}
+.media-admin .row{display:grid;gap:9px;border:1px solid var(--ink);background:#fff;padding:11px}
+.media-admin .row .top{display:flex;gap:9px;align-items:center;font-size:11px}
+.media-admin .row .top b{color:var(--red);text-transform:uppercase;letter-spacing:.08em;font-size:9px}
+.media-admin .row .top a{margin-left:auto;text-decoration:underline;word-break:break-all;font-size:10px;opacity:.7}
