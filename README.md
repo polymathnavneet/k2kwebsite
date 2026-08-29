@@ -8,9 +8,69 @@ The route runs Kanyakumari → Madurai → Salem → Bengaluru → **Hyderabad �
 
 ---
 
-## Three things worth knowing
+## What this site does
 
-### 1. Messages publish the moment they arrive
+### 1. Where the walk is
+
+Open `/admin` -> **Journey** -> **Sync GPS & add distance** for a single fix, or
+feed it a whole recorded path (section 3). The panel then shows four numbers:
+how far along the route you are, how far you have walked, how far off the
+planned line you are, and which stop is next.
+
+### 2. The route corrects itself, and asks before it changes
+
+Every position is projected onto the route line, which answers two different
+questions with two different numbers:
+
+| Number | Means | Drives |
+| --- | --- | --- |
+| **Walked** | Sum of the gaps between fixes | The pace, and so every date |
+| **Along the route** | Where that position sits on the line | Which stop is next, what counts as reached |
+
+A detour makes these differ, and treating them as one number is how a tracker
+starts lying. Position along the route only ever moves forward, so wandering
+into a market and back out cannot un-reach a town already walked through.
+
+**When the walk leaves the line** (more than 12 km off), the site names the
+nearest town, works out where it belongs in the route, and **asks**:
+
+> You are about 23 km off the planned line, near Chakghat.
+> **Yes, add it to my route** · **No, I was just passing**
+
+Say yes and the stop is inserted at the right distance, the route is re-sorted,
+the total updates, every date after it recalculates, and `data/route.json` is
+rewritten. Say no and nothing changes. **The site never edits the route on its
+own** — a detour round a closed bridge should not silently rewrite the plan, and
+a bad fix in a tunnel should not invent a town. It will not ask twice about the
+same place, or about a town already on the route.
+
+Guards on the distance, reported back so you know which one applied:
+
+- Under **100 m** — GPS drift, ignored. A phone on a table overnight invents nothing.
+- Over **150 km** — a bus or a bad fix. The map pin moves; the distance does not.
+
+### 3. Feeding it from something more trustworthy than one button press
+
+`POST /api/track` takes a whole recorded path rather than a single tap, so the
+distance is a sum of where you actually went. Miss a day of tapping and a single
+point is simply wrong; a track is not.
+
+It accepts three shapes:
+
+| Source | Shape | Worth knowing |
+| --- | --- | --- |
+| **OwnTracks** | Its own JSON, posted automatically | Free app, records all day, queues with no signal, posts when it returns. The closest thing to hands-off. |
+| **Google Takeout** | The location history export | Google Maps Timeline has **no live API** — Google closed it and moved Timeline onto the phone. Export from `takeout.google.com` and upload; that is the only way its data gets in. |
+| **Anything else** | `{ "points": [{ "lat": 21.1, "lon": 79.0, "at": "2027-02-05T09:00:00Z" }] }` | A watch, a Strava export, a script. |
+
+Points are sorted oldest-first and replayed through the same processing as a
+manual sync, so a batch and a tap can never disagree about the distance.
+
+To point OwnTracks at it: set mode to **HTTP**, URL to
+`https://<your site>/api/track`, and add a header `x-admin-token` with your
+admin passcode.
+
+### 4. Messages publish the moment they arrive
 
 There is no holding queue and no "make public" step. Someone writes on one of the
 `/ahead` pages and it is on `/messages` immediately. Only likely spam is held
@@ -19,24 +79,7 @@ back, and that still lands in the admin sheet where it can be released.
 To reply: open `/admin`, type in the box under the message, press **Reply**. The
 reply appears under it publicly.
 
-### 2. The distance moves itself, and the dates follow
-
-Open `/admin` → **Journey** → **Sync GPS & add distance**. Each fix is measured
-against the last one and the gap is added to the distance walked, so the total
-climbs on its own and every arrival date recalculates from it.
-
-Two guards keep it honest, and the panel tells you which one it used:
-
-- A move under **100 m** is ignored, so a phone drifting on a table overnight
-  does not invent kilometres.
-- A jump over **150 km** is ignored, so a bus or a bad fix moves the map pin
-  without counting as walking.
-
-Dates come from the planned pace until the walk goes Live, and from the pace
-actually being walked after that. Walking faster pulls every date earlier;
-resting pushes them back. Nothing is typed in by hand.
-
-### 3. Claude and ChatGPT can both edit the content
+### 5. Claude and ChatGPT can both edit the content
 
 Everything public is mirrored to plain JSON in [`data/`](data/), and can be
 pulled back out of it:
@@ -94,7 +137,9 @@ bar says so rather than leaving it looking lost.
 | `GET/POST /api/messages` | POST admin actions only | The wall; posting publishes immediately |
 | `GET/POST /api/route` | POST: admin | The route and its stops |
 | `GET/POST /api/journey` | POST: admin | Status, distance, latest dispatch |
-| `POST /api/gps` | admin | Sync a GPS fix and move the distance |
+| `POST /api/gps` | admin | Sync one GPS fix |
+| `POST /api/track` | admin | Feed a whole recorded path (OwnTracks, Takeout, any list) |
+| `GET/POST /api/suggestions` | admin | Places found on the road, and your yes or no |
 | `GET/POST /api/sync` | POST: admin | Pull `data/*.json` from GitHub |
 | `GET/POST /api/book` | admin for the list | Pre-registrations; public sees a count |
 | `GET/POST /api/reactions` | — | Cheer and follow counts |
@@ -111,6 +156,9 @@ npm run build
 Hyderabad-before-Nagpur order, and that GPS drift and bus rides do not inflate
 the distance while real walking does.
 `tests/github-bridge.test.mjs` guards the `data/` bridge.
+`tests/route-tracking.test.mjs` replays the entire walk with GPS noise and
+checks every stop is reached in order, nothing reads backwards, walking the
+line never looks like leaving it, and a real detour is caught.
 
 Two test failures and one lint error predate this work and are unrelated:
 `renders development preview metadata`, `emits the catalog's animation and

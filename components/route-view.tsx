@@ -24,12 +24,16 @@ export function RouteView() {
     // Count the day from the calendar rather than a typed-in number, so the
     // pace is right even when a field update gets missed.
     const day = live ? Math.max(journey.day, dayOfWalk(route.startDate)) : 0;
+    // Two different measures, deliberately. Pace comes from the distance the
+    // legs actually covered; which town is next comes from how far along the
+    // route that position sits. A detour makes them differ.
     const pace = live ? livePace(journey.distanceTotal, day, route.paceKmPerDay) : route.paceKmPerDay;
+    const along = live ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
     const base = live ? new Date() : new Date(`${route.startDate}T12:00:00`);
     const stops = route.stops.map(stop => ({
       ...stop,
-      reached: live && stop.km <= journey.distanceTotal,
-      eta: new Date(base.getTime() + Math.max(0, stop.km - (live ? journey.distanceTotal : 0)) / pace * 86400000),
+      reached: live && stop.km <= along,
+      eta: new Date(base.getTime() + Math.max(0, stop.km - along) / pace * 86400000),
     }));
     return {
       live,
@@ -37,6 +41,8 @@ export function RouteView() {
       pace,
       stops,
       walked: live ? journey.distanceTotal : 0,
+      along,
+      offRoute: journey.offRouteKm ?? 0,
       next: stops.find(stop => !stop.reached) ?? stops.at(-1),
       finish: stops.at(-1)?.eta,
     };
@@ -53,6 +59,7 @@ export function RouteView() {
       </div>
     </section>
     <section className="dynamic-route shell">
+      {estimate.live && estimate.offRoute > 12 && <p className="off-route-note">Navneet is currently about {Math.round(estimate.offRoute)} km off the drawn line. The route below is being corrected as he walks.</p>}
       <div className="route-note"><div className="section-tag">HOW DATES WORK</div><p>Before departure, dates count forward from the start date at the planned pace. Once the walk is live they come from the distance the GPS has actually recorded and the pace actually being walked, so walking faster pulls every date earlier and resting pushes them back. Change the route once in the admin sheet and every estimate recalculates.</p></div>
       <div className="stop-list">{estimate.stops.map((stop, index) => <article className={stop.reached ? "reached" : ""} key={`${stop.name}-${index}`}>
         <div><b>{String(index + 1).padStart(2, "0")}</b><span>{stop.reached ? "REACHED" : date(stop.eta)}</span></div>
