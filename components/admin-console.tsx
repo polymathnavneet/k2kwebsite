@@ -76,7 +76,12 @@ export function AdminConsole() {
         [row.id, current[row.id] !== undefined ? current[row.id] : (row.reply || "")])));
       setToken(token.trim()); setConnected(true); localStorage.setItem("alw-admin-token", token.trim());
       setStatus(`Synced · ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`);
-    } catch (error) { setConnected(false); setStatus(error instanceof Error ? `${error.message}. Check the passcode.` : "Could not connect"); }
+    } catch (error) {
+      setConnected(false);
+      const message = error instanceof Error ? error.message : "Could not connect";
+      // Only a rejected passcode is a passcode problem.
+      setStatus(/unauthor/i.test(message) ? "That passcode was not accepted." : `${message}. Check your connection.`);
+    }
   }
 
   useEffect(() => {
@@ -250,11 +255,19 @@ export function AdminConsole() {
     const rows = kind === "messages" ? messages : books;
     if (!rows.length) return;
     const keys = kind === "messages" ? ["createdAt", "type", "name", "place", "message", "contact", "status", "reply"] : ["createdAt", "name", "contact", "city", "format", "note"];
-    const csv = [keys.join(","), ...rows.map(row => keys.map(key => `"${String((row as unknown as Record<string, unknown>)[key] ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
+    // A cell starting = + - or @ is executed as a formula by Excel and Sheets,
+    // so a message could run code on the machine that opens the export. A
+    // leading apostrophe makes the spreadsheet treat it as text.
+    const safe = (value: unknown) => {
+      const text = String(value ?? "");
+      const escaped = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+      return `"${escaped.replace(/"/g, '""')}"`;
+    };
+    const csv = [keys.join(","), ...rows.map(row => keys.map(key => safe((row as unknown as Record<string, unknown>)[key])).join(","))].join("\n");
     const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); link.download = `a-long-walk-${kind}.csv`; link.click(); URL.revokeObjectURL(link.href);
   }
 
-  if (!connected) return <section className="admin-login"><h1>Your walk.<br />One control room.</h1><p>Use the private passcode once. It stays only on this phone. Extra spaces are ignored.</p><Input type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={token} onChange={event => setToken(event.target.value)} placeholder="Private passcode" /><Button onClick={loadAll} disabled={token.trim().length < 8}>Open control room</Button><p role="status">{status}</p></section>;
+  if (!connected) return <section className="admin-login"><h1>Your walk.<br />One control room.</h1><p>Use the private passcode once. It stays only on this phone. Extra spaces are ignored.</p><form onSubmit={event => { event.preventDefault(); loadAll(); }}><Input type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={token} onChange={event => setToken(event.target.value)} placeholder="Private passcode" /><Button type="submit" disabled={token.trim().length < 8}>Open control room</Button></form><p role="status">{status}</p></section>;
 
   return <section className="admin-app">
     <div className="admin-bar"><div><b>A LONG WALK</b><span>{status}</span></div><Button variant="outline" onClick={loadAll}><RefreshCw /> Refresh</Button><Button variant="outline" onClick={pullFromGithub}><CloudDownload /> Pull edits from GitHub</Button><Button variant="outline" onClick={() => { localStorage.removeItem("alw-admin-token"); setConnected(false); setToken(""); }}>Change passcode</Button></div>

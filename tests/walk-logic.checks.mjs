@@ -1,11 +1,20 @@
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
-// Load lib/geo.ts by stripping its types - the functions are plain JS.
-const geoSrc = readFileSync("lib/geo.ts", "utf8")
-  .replace(/: ?(number|string|Date)\b/g, "").replace(/export /g, "");
+// The library files import each other with the "@/" alias, which a data: URL
+// cannot resolve. Concatenating their sources keeps the test running against
+// the real code rather than a copy of it.
+import ts from "typescript";
+
+const sourceOf = file => readFileSync(file, "utf8")
+  .replace(/^import .*$/gm, "")
+  ;
+
+const geoSrc = [sourceOf("lib/time.ts"), sourceOf("lib/geo.ts")].join("\n");
 const { distanceKm, dayOfWalk, livePace } = await import(
-  "data:text/javascript," + encodeURIComponent(geoSrc + "\nexport { distanceKm, dayOfWalk, livePace };")
+  "data:text/javascript," + encodeURIComponent(
+    ts.transpileModule(geoSrc, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
+  )
 );
 
 const route = JSON.parse(readFileSync("data/route.json", "utf8"));

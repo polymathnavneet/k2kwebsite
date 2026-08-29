@@ -1,3 +1,5 @@
+import { walkDay } from "@/lib/time";
+
 /** Distance in kilometres between two points on the earth. */
 export function distanceKm(fromLat: number, fromLon: number, toLat: number, toLon: number) {
   const R = 6371;
@@ -10,12 +12,27 @@ export function distanceKm(fromLat: number, fromLon: number, toLat: number, toLo
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-/** Whole days from the start date to now, counting the first day as day 1. */
+/**
+ * Whole days from the start date to now, counting the first day as day 1.
+ * Indian dates, so every reader sees the same expedition day.
+ */
 export function dayOfWalk(startDate: string, now = new Date()) {
-  const start = new Date(`${startDate}T00:00:00`);
-  if (Number.isNaN(start.getTime())) return 0;
-  const days = Math.floor((now.getTime() - start.getTime()) / 86400000) + 1;
-  return days < 1 ? 0 : days;
+  return walkDay(startDate, now);
+}
+
+/**
+ * How many kilometres a week actually covers.
+ *
+ * A planned pace of 25 km/day is a walking-day figure, not a calendar-day one.
+ * Treating it as seven days a week quietly promises a finish nobody can reach.
+ * One rest day in seven is the working assumption.
+ */
+export const REST_DAYS_PER_WEEK = 1;
+export const WALKING_DAYS_PER_WEEK = 7 - REST_DAYS_PER_WEEK;
+
+/** Planned pace converted from a walking-day rate to a calendar-day rate. */
+export function calendarPace(walkingDayPace: number) {
+  return (walkingDayPace * WALKING_DAYS_PER_WEEK) / 7;
 }
 
 /**

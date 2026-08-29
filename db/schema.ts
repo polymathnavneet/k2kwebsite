@@ -127,3 +127,31 @@ export const journalEntries = sqliteTable("journal_entries", {
   published: integer("published").notNull().default(1),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+/**
+ * Every GPS fix, kept.
+ *
+ * The journey row holds only the latest position and the running totals, which
+ * cannot prove anything. This is the actual trail: where the walk really went,
+ * when, and how accurate each reading was.
+ *
+ * The unique index on (recorded_at, lat, lon) is what makes uploading the same
+ * track twice harmless - the second upload conflicts and is ignored, so no
+ * distance is counted twice.
+ */
+export const gpsPoints = sqliteTable(
+  "gps_points",
+  {
+    id: text("id").primaryKey(),
+    recordedAt: text("recorded_at").notNull(),
+    lat: real("lat").notNull(),
+    lon: real("lon").notNull(),
+    accuracy: real("accuracy"),
+    source: text("source").notNull().default("manual"),
+    countedKm: real("counted_km").notNull().default(0),
+    speedKmh: real("speed_kmh"),
+    counted: integer("counted").notNull().default(0),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  table => [uniqueIndex("gps_point_unique").on(table.recordedAt, table.lat, table.lon)]
+);

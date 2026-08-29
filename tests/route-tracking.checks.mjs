@@ -2,20 +2,21 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import ts from "typescript";
 
-const load = async (file, extra = "") => {
-  const src = readFileSync(file, "utf8")
-    .replace(/^import .*from "@\/lib\/geo";$/m, "")
-    .replace(/^import type .*$/gm, "") + extra;
+// The library files import each other with the "@/" alias, which a data: URL
+// cannot resolve. Concatenating their sources before transpiling keeps the test
+// running against the real code rather than a copy of it.
+const sourceOf = file => readFileSync(file, "utf8")
+  .replace(/^import .*$/gm, "")
+  ;
+
+const load = async (file, deps = []) => {
+  const src = [...deps.map(sourceOf), sourceOf(file)].join("\n");
   const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
   return import("data:text/javascript," + encodeURIComponent(js));
 };
 
-const geo = await load("lib/geo.ts");
-const math = await load("lib/route-math.ts",
-  "\nfunction distanceKm(aLat,aLon,bLat,bLon){const R=6371,r=v=>v*Math.PI/180;" +
-  "const dLat=r(bLat-aLat),dLon=r(bLon-aLon);" +
-  "const a=Math.sin(dLat/2)**2+Math.cos(r(aLat))*Math.cos(r(bLat))*Math.sin(dLon/2)**2;" +
-  "return 2*R*Math.asin(Math.min(1,Math.sqrt(a)));}");
+const geo = await load("lib/geo.ts", ["lib/time.ts"]);
+const math = await load("lib/route-math.ts", ["lib/time.ts", "lib/geo.ts"]);
 
 const route = JSON.parse(readFileSync("data/route.json", "utf8"));
 const stops = route.stops;

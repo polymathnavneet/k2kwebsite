@@ -10,6 +10,8 @@
  * midnight, and does not repeat until the list runs out.
  */
 
+import { istDayKey } from "@/lib/time";
+
 export const PREPARATION_PROMPTS = [
   "What did you do today to get ready, and how did it go?",
   "What is the one thing you still have not sorted out?",
@@ -52,9 +54,9 @@ export const ROAD_PROMPTS = [
   "What would you tell someone starting this walk tomorrow?",
 ];
 
-/** Whole days since 1970, so the question turns over at local midnight. */
+/** Whole days since 1970 in Indian time, so the question turns over at midnight in India. */
 function dayNumber(date: Date) {
-  return Math.floor((date.getTime() - date.getTimezoneOffset() * 60000) / 86400000);
+  return Math.floor(new Date(istDayKey(date)).getTime() / 86400000);
 }
 
 export function promptForDay(mode: string, date = new Date()) {
@@ -62,11 +64,8 @@ export function promptForDay(mode: string, date = new Date()) {
   return list[Math.abs(dayNumber(date)) % list.length];
 }
 
-/** Today as YYYY-MM-DD in the viewer's own timezone, not UTC. */
-export function todayKey(date = new Date()) {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
-}
+/** Today as YYYY-MM-DD in India, so a day is the same day for everyone. */
+export const todayKey = istDayKey;
 
 /**
  * Things to tap.
