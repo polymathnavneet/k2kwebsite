@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 type Kind = "place" | "story" | "support" | "question";
 
 export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind: Kind; placeLabel: string; messageLabel: string; buttonLabel: string }) {
-  const [publicConsent, setPublicConsent] = useState(false);
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
   const queueKey = "alw-message-queue";
@@ -42,12 +40,13 @@ export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind
     setStatus("Sending…");
     const form = event.currentTarget;
     const values = Object.fromEntries(new FormData(form));
-    const payload = { type: kind, name: values.name, contact: values.contact, place: values.place, message: values.message, publicConsent };
+    const payload = { type: kind, name: values.name, contact: values.contact, place: values.place, message: values.message };
     try {
       const result = await send(payload);
       form.reset();
-      setPublicConsent(false);
-      setStatus(result.public ? "Published on the public wall." : "Received privately. Navneet can see it in his inbox.");
+      setStatus(result.public
+        ? "Published. It is on the public wall now."
+        : "Received. This one needs a quick check before it appears publicly.");
     } catch (error) {
       if (!navigator.onLine) {
         const queue = JSON.parse(localStorage.getItem(queueKey) || "[]");
@@ -63,7 +62,7 @@ export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind
     <label>PRIVATE CONTACT<Input required name="contact" placeholder="Email or phone — never public" /></label>
     <label className="wide">{placeLabel}<Input name="place" required={kind !== "question"} /></label>
     <label className="wide">{messageLabel}<Textarea name="message" required /></label>
-    <label className="public-choice wide"><Checkbox checked={publicConsent} onCheckedChange={value => setPublicConsent(value === true)} /><span>Publish my public name, place and message automatically. My contact stays private.</span></label>
+    <p className="public-choice wide">Your name, place and message go on the public wall straight away. Your contact detail is never published — it is only so Navneet can reach you.</p>
     <button className="primary-button wide" type="submit" disabled={sending}>{sending ? "Sending…" : buttonLabel}</button>
     {status && <p className="form-status wide" role="status">{status} {status.startsWith("Published") && <Link href="/messages">See it →</Link>}</p>}
   </form>;

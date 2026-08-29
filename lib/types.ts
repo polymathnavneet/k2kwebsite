@@ -22,6 +22,8 @@ export type Journey = {
   day: number;
   distanceToday: number;
   distanceTotal: number;
+  routeProgressKm?: number;
+  offRouteKm?: number;
   stepsToday: number;
   walkingMinutes: number;
   currentPlace: string;
@@ -50,4 +52,18 @@ export type PublicMessage = {
   createdAt: string;
   repliedAt?: string | null;
   contact?: string;
+};
+
+export type RouteSuggestion = {
+  id: string;
+  kind: string;
+  name: string;
+  state: string;
+  lat: number;
+  lon: number;
+  km: number;
+  reason: string;
+  status: string;
+  createdAt: string;
+  decidedAt?: string | null;
 };

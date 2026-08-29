@@ -1,4 +1,179 @@
-# vinext-starter
+# A Long Walk
+
+Navneet walking roughly 4,270 km from Kanyakumari to Kashmir, starting
+**17 December 2026**. This repository is the website.
+
+The route runs Kanyakumari → Madurai → Salem → Bengaluru → **Hyderabad → Nagpur**
+→ Jabalpur → Rewa → Prayagraj → Varanasi → Lucknow → Delhi → Jammu → Srinagar.
+
+---
+
+## What this site does
+
+### 1. Where the walk is
+
+Open `/admin` -> **Journey** -> **Sync GPS & add distance** for a single fix, or
+feed it a whole recorded path (section 3). The panel then shows four numbers:
+how far along the route you are, how far you have walked, how far off the
+planned line you are, and which stop is next.
+
+### 2. The route corrects itself, and asks before it changes
+
+Every position is projected onto the route line, which answers two different
+questions with two different numbers:
+
+| Number | Means | Drives |
+| --- | --- | --- |
+| **Walked** | Sum of the gaps between fixes | The pace, and so every date |
+| **Along the route** | Where that position sits on the line | Which stop is next, what counts as reached |
+
+A detour makes these differ, and treating them as one number is how a tracker
+starts lying. Position along the route only ever moves forward, so wandering
+into a market and back out cannot un-reach a town already walked through.
+
+**When the walk leaves the line** (more than 12 km off), the site names the
+nearest town, works out where it belongs in the route, and **asks**:
+
+> You are about 23 km off the planned line, near Chakghat.
+> **Yes, add it to my route** · **No, I was just passing**
+
+Say yes and the stop is inserted at the right distance, the route is re-sorted,
+the total updates, every date after it recalculates, and `data/route.json` is
+rewritten. Say no and nothing changes. **The site never edits the route on its
+own** — a detour round a closed bridge should not silently rewrite the plan, and
+a bad fix in a tunnel should not invent a town. It will not ask twice about the
+same place, or about a town already on the route.
+
+Guards on the distance, reported back so you know which one applied:
+
+- Under **100 m** — GPS drift, ignored. A phone on a table overnight invents nothing.
+- Over **150 km** — a bus or a bad fix. The map pin moves; the distance does not.
+
+### 3. Feeding it from something more trustworthy than one button press
+
+`POST /api/track` takes a whole recorded path rather than a single tap, so the
+distance is a sum of where you actually went. Miss a day of tapping and a single
+point is simply wrong; a track is not.
+
+It accepts three shapes:
+
+| Source | Shape | Worth knowing |
+| --- | --- | --- |
+| **OwnTracks** | Its own JSON, posted automatically | Free app, records all day, queues with no signal, posts when it returns. The closest thing to hands-off. |
+| **Google Takeout** | The location history export | Google Maps Timeline has **no live API** — Google closed it and moved Timeline onto the phone. Export from `takeout.google.com` and upload; that is the only way its data gets in. |
+| **Anything else** | `{ "points": [{ "lat": 21.1, "lon": 79.0, "at": "2027-02-05T09:00:00Z" }] }` | A watch, a Strava export, a script. |
+
+Points are sorted oldest-first and replayed through the same processing as a
+manual sync, so a batch and a tap can never disagree about the distance.
+
+To point OwnTracks at it: set mode to **HTTP**, URL to
+`https://<your site>/api/track`, and add a header `x-admin-token` with your
+admin passcode.
+
+### 4. Messages publish the moment they arrive
+
+There is no holding queue and no "make public" step. Someone writes on one of the
+`/ahead` pages and it is on `/messages` immediately. Only likely spam is held
+back, and that still lands in the admin sheet where it can be released.
+
+To reply: open `/admin`, type in the box under the message, press **Reply**. The
+reply appears under it publicly.
+
+### 5. Claude and ChatGPT can both edit the content
+
+Everything public is mirrored to plain JSON in [`data/`](data/), and can be
+pulled back out of it:
+
+| File | Holds |
+| --- | --- |
+| `data/route.json` | The route, the stops, the start date, the pace |
+| `data/messages.json` | The public wall and the replies |
+| `data/journey.json` | Where the walk has got to |
+| `data/book.json` | The pre-registration count |
+
+Anyone with repo access edits those files on GitHub. Then in `/admin` press
+**Pull edits from GitHub** and it goes live.
+
+**Pulling needs no setup at all.** This repository is public, so the site reads
+the data files straight off `raw.githubusercontent.com` with no credentials.
+
+`GITHUB_TOKEN` adds the other direction: changes made in the admin panel get
+written back into the data files, so they stay a current backup of the site
+rather than drifting out of date. Useful, but not needed to get an edit live.
+
+**Contact details are never written to these files.** This repository is public.
+Email addresses and phone numbers stay in the database and appear only in the
+admin sheet, which exports them as CSV for a spreadsheet.
+
+---
+
+## Setup
+
+Two environment variables in the hosting environment.
+
+| Variable | What it does |
+| --- | --- |
+| `ADMIN_TOKEN` | The private passcode for `/admin`. Required. |
+| `GITHUB_TOKEN` | Writes site changes back into `data/`. Optional - pulling works without it. |
+
+Without `GITHUB_TOKEN` everything still works and **Pull edits from GitHub** is
+still there. Only the write-back is off, so the data files stop updating
+themselves when you change something in the admin panel.
+
+To create it: **GitHub → Settings → Developer settings → Personal access tokens →
+Fine-grained tokens**. Give it access to this repository only, with
+**Contents: Read and write**, and nothing else. `GITHUB_REPO` and `GITHUB_BRANCH`
+can override the defaults (`polymathnavneet/k2kwebsite` and `main`).
+
+Commits made by the site carry `[skip ci]`, because the site reads its content
+from the database rather than the build — rebuilding on every message would only
+add delay.
+
+## Offline
+
+The walk goes through places with no signal, so `public/sw.js` caches every page
+and the last thing each API returned. With no signal the site still opens and
+still shows the wall, the route and the map. A message or a book pre-registration
+written offline is saved on the phone and sent when the signal returns, and a red
+bar says so rather than leaving it looking lost.
+
+## API
+
+| Endpoint | Auth | Does |
+| --- | --- | --- |
+| `GET/POST /api/messages` | POST admin actions only | The wall; posting publishes immediately |
+| `GET/POST /api/route` | POST: admin | The route and its stops |
+| `GET/POST /api/journey` | POST: admin | Status, distance, latest dispatch |
+| `POST /api/gps` | admin | Sync one GPS fix |
+| `POST /api/track` | admin | Feed a whole recorded path (OwnTracks, Takeout, any list) |
+| `GET/POST /api/suggestions` | admin | Places found on the road, and your yes or no |
+| `GET/POST /api/sync` | POST: admin | Pull `data/*.json` from GitHub |
+| `GET/POST /api/book` | admin for the list | Pre-registrations; public sees a count |
+| `GET/POST /api/reactions` | — | Cheer and follow counts |
+
+## Checks
+
+```
+npm run lint
+node --test tests/*.test.mjs
+npm run build
+```
+
+`tests/walk-logic.test.mjs` guards the start date, the total distance, the
+Hyderabad-before-Nagpur order, and that GPS drift and bus rides do not inflate
+the distance while real walking does.
+`tests/github-bridge.test.mjs` guards the `data/` bridge.
+`tests/route-tracking.test.mjs` replays the entire walk with GPS noise and
+checks every stop is reached in order, nothing reads backwards, walking the
+line never looks like leaving it, and a real detour is caught.
+
+Two test failures and one lint error predate this work and are unrelated:
+`renders development preview metadata`, `emits the catalog's animation and
+scrolling utilities`, and a `set-state-in-effect` error in `components/games.tsx`.
+
+---
+
+# Notes from the starter template
 
 A clean full-stack starter running on
 [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and

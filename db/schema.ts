@@ -8,7 +8,7 @@ export const messages = sqliteTable("messages", {
   place: text("place").notNull().default(""),
   message: text("message").notNull(),
   contact: text("contact").notNull(),
-  status: text("status").notNull().default("held"),
+  status: text("status").notNull().default("public"),
   reply: text("reply").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   repliedAt: text("replied_at"),
@@ -55,6 +55,8 @@ export const journey = sqliteTable("journey", {
   day: integer("day").notNull().default(0),
   distanceToday: real("distance_today").notNull().default(0),
   distanceTotal: real("distance_total").notNull().default(0),
+  routeProgressKm: real("route_progress_km").notNull().default(0),
+  offRouteKm: real("off_route_km").notNull().default(0),
   stepsToday: integer("steps_today").notNull().default(0),
   walkingMinutes: integer("walking_minutes").notNull().default(0),
   currentPlace: text("current_place").notNull().default("Lucknow, Uttar Pradesh"),
@@ -75,4 +77,22 @@ export const journey = sqliteTable("journey", {
 export const reactions = sqliteTable("reactions", {
   type: text("type").primaryKey(),
   count: integer("count").notNull().default(0),
+});
+
+/**
+ * Places the site has spotted and wants Navneet to confirm before touching the
+ * route. Nothing here changes the public site until it is accepted.
+ */
+export const routeSuggestions = sqliteTable("route_suggestions", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull().default("add_stop"),
+  name: text("name").notNull(),
+  state: text("state").notNull().default(""),
+  lat: real("lat").notNull(),
+  lon: real("lon").notNull(),
+  km: integer("km").notNull(),
+  reason: text("reason").notNull().default(""),
+  status: text("status").notNull().default("pending"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  decidedAt: text("decided_at"),
 });

@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import { routeConfig, routeStops } from "@/db/schema";
 import { defaultRoute } from "@/lib/defaults";
+import { mirrorRoute } from "@/lib/mirror";
 import { clamp, clean, isAdmin } from "@/lib/server";
 
 export async function GET() {
@@ -24,8 +25,8 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
-  if (!Array.isArray(body.stops) || body.stops.length < 2 || body.stops.length > 40) {
-    return Response.json({ error: "The route needs 2–40 stops." }, { status: 400 });
+  if (!Array.isArray(body.stops) || body.stops.length < 2 || body.stops.length > 120) {
+    return Response.json({ error: "The route needs between 2 and 120 stops." }, { status: 400 });
   }
   let previous = -1;
   try {
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
         .bind(stop.sortOrder, stop.name, stop.state, stop.lat, stop.lon, stop.km, stop.note)),
     ];
     await runtime.DB.batch(statements);
+    await mirrorRoute(getDb());
     return Response.json({ ok: true, route: { title: "A Long Walk", startDate, paceKmPerDay: pace, totalDistance: stops.at(-1)!.km, updatedAt: now, stops } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Could not save route" }, { status: 400 });

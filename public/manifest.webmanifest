@@ -1,0 +1,12 @@
+{
+  "name": "A Long Walk",
+  "short_name": "A Long Walk",
+  "description": "Navneet walking 4,270 km from Kanyakumari to Kashmir.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f3ee",
+  "theme_color": "#201e1d",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
