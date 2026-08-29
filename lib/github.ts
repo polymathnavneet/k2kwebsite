@@ -27,7 +27,15 @@ export type DataFile = keyof typeof DATA_FILES;
 type Runtime = { GITHUB_TOKEN?: string; GITHUB_REPO?: string; GITHUB_BRANCH?: string };
 const runtime = () => env as unknown as Runtime;
 
-export const githubEnabled = () => Boolean(runtime().GITHUB_TOKEN?.trim());
+/**
+ * Reading needs nothing: this repository is public, so the data files are
+ * fetched straight off raw.githubusercontent.com. Only writing back needs a
+ * token, which is why pulling edits works with no setup at all.
+ */
+export const canWrite = () => Boolean(runtime().GITHUB_TOKEN?.trim());
+
+/** @deprecated kept so older callers keep meaning "can this write". */
+export const githubEnabled = canWrite;
 
 const repo = () => runtime().GITHUB_REPO?.trim() || "polymathnavneet/k2kwebsite";
 const branch = () => runtime().GITHUB_BRANCH?.trim() || "main";
@@ -77,7 +85,7 @@ export async function readData<T>(file: DataFile): Promise<{ data: T | null; sha
  * someone their message.
  */
 export async function writeData(file: DataFile, data: unknown, message: string): Promise<boolean> {
-  if (!githubEnabled()) return false;
+  if (!canWrite()) return false;
   try {
     const next = `${JSON.stringify(data, null, 2)}\n`;
     const { data: current, sha } = await readData<unknown>(file);

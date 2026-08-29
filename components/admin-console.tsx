@@ -26,7 +26,7 @@ export function AdminConsole() {
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [books, setBooks] = useState<BookRow[]>([]);
   const [replies, setReplies] = useState<Record<string, string>>({});
-  const [githubReady, setGithubReady] = useState(false);
+  const [mirrorsBack, setMirrorsBack] = useState(false);
   const [busyRow, setBusyRow] = useState("");
   const [rowNote, setRowNote] = useState<Record<string, string>>({});
   const [suggestions, setSuggestions] = useState<RouteSuggestion[]>([]);
@@ -62,7 +62,7 @@ export function AdminConsole() {
   }
 
   useEffect(() => {
-    fetch("/api/sync").then(response => response.json()).then(data => setGithubReady(Boolean(data.enabled))).catch(() => {});
+    fetch("/api/sync").then(response => response.json()).then(data => setMirrorsBack(Boolean(data.canWrite))).catch(() => {});
   }, []);
 
   // Sync a GPS fix. The server measures it against the last one and moves the
@@ -93,7 +93,9 @@ export function AdminConsole() {
       await loadAll();
       setStatus(result.problems.length
         ? `Problems: ${result.problems.join(" · ")}`
-        : result.applied.length ? `Pulled from GitHub: ${result.applied.join(" · ")}` : "GitHub had nothing new.");
+        : result.applied.length
+          ? `Pulled from GitHub: ${result.applied.join(" · ")}.${mirrorsBack ? "" : " (Changes made here are not written back to the files - that part needs a GitHub token.)"}`
+          : "GitHub had nothing new.");
     } catch (error) { setStatus(error instanceof Error ? error.message : "Could not pull from GitHub"); }
   }
 
@@ -192,7 +194,7 @@ export function AdminConsole() {
   if (!connected) return <section className="admin-login"><h1>Your walk.<br />One control room.</h1><p>Use the private passcode once. It stays only on this phone. Extra spaces are ignored.</p><Input type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={token} onChange={event => setToken(event.target.value)} placeholder="Private passcode" /><Button onClick={loadAll} disabled={token.trim().length < 8}>Open control room</Button><p role="status">{status}</p></section>;
 
   return <section className="admin-app">
-    <div className="admin-bar"><div><b>A LONG WALK</b><span>{status}</span></div><Button variant="outline" onClick={loadAll}><RefreshCw /> Refresh</Button>{githubReady && <Button variant="outline" onClick={pullFromGithub}><CloudDownload /> Pull edits from GitHub</Button>}<Button variant="outline" onClick={() => { localStorage.removeItem("alw-admin-token"); setConnected(false); setToken(""); }}>Change passcode</Button></div>
+    <div className="admin-bar"><div><b>A LONG WALK</b><span>{status}</span></div><Button variant="outline" onClick={loadAll}><RefreshCw /> Refresh</Button><Button variant="outline" onClick={pullFromGithub}><CloudDownload /> Pull edits from GitHub</Button><Button variant="outline" onClick={() => { localStorage.removeItem("alw-admin-token"); setConnected(false); setToken(""); }}>Change passcode</Button></div>
     <Tabs defaultValue="journey">
       <TabsList className="admin-tabs"><TabsTrigger value="journey">Journey</TabsTrigger><TabsTrigger value="route">Route</TabsTrigger><TabsTrigger value="messages">Messages {messages.length ? `(${messages.length})` : ""}</TabsTrigger><TabsTrigger value="book">Book {books.length ? `(${books.length})` : ""}</TabsTrigger></TabsList>
       {suggestions.length > 0 && <section className="suggestions" aria-label="Places to confirm">

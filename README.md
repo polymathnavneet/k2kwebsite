@@ -92,8 +92,14 @@ pulled back out of it:
 | `data/book.json` | The pre-registration count |
 
 Anyone with repo access edits those files on GitHub. Then in `/admin` press
-**Pull edits from GitHub** and it goes live. Anything changed in the admin panel
-is written straight back, so the files always match the site.
+**Pull edits from GitHub** and it goes live.
+
+**Pulling needs no setup at all.** This repository is public, so the site reads
+the data files straight off `raw.githubusercontent.com` with no credentials.
+
+`GITHUB_TOKEN` adds the other direction: changes made in the admin panel get
+written back into the data files, so they stay a current backup of the site
+rather than drifting out of date. Useful, but not needed to get an edit live.
 
 **Contact details are never written to these files.** This repository is public.
 Email addresses and phone numbers stay in the database and appear only in the
@@ -108,10 +114,11 @@ Two environment variables in the hosting environment.
 | Variable | What it does |
 | --- | --- |
 | `ADMIN_TOKEN` | The private passcode for `/admin`. Required. |
-| `GITHUB_TOKEN` | Switches on the `data/` bridge. Optional. |
+| `GITHUB_TOKEN` | Writes site changes back into `data/`. Optional - pulling works without it. |
 
-Without `GITHUB_TOKEN` the site works exactly as before — the mirror simply does
-nothing and the **Pull edits from GitHub** button stays hidden.
+Without `GITHUB_TOKEN` everything still works and **Pull edits from GitHub** is
+still there. Only the write-back is off, so the data files stop updating
+themselves when you change something in the admin panel.
 
 To create it: **GitHub → Settings → Developer settings → Personal access tokens →
 Fine-grained tokens**. Give it access to this repository only, with

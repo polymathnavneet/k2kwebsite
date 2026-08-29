@@ -2,7 +2,7 @@ import { eq, inArray } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import { journey, messages, routeConfig, routeStops } from "@/db/schema";
-import { githubEnabled, readData } from "@/lib/github";
+import { canWrite, readData } from "@/lib/github";
 import { mirrorBook, mirrorJourney, mirrorMessages, mirrorRoute } from "@/lib/mirror";
 import { clamp, clean, isAdmin, publicText } from "@/lib/server";
 import type { Journey, WalkRoute } from "@/lib/types";
@@ -21,15 +21,13 @@ import type { Journey, WalkRoute } from "@/lib/types";
  */
 
 export async function GET() {
-  return Response.json({ enabled: githubEnabled() });
+  // Pulling always works - the repository is public. Only writing back, which
+  // keeps the data files in step with the admin panel, needs a token.
+  return Response.json({ canPull: true, canWrite: canWrite() });
 }
 
 export async function POST(request: Request) {
   if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  if (!githubEnabled()) {
-    return Response.json({ error: "Set GITHUB_TOKEN in the hosting environment to sync with GitHub." }, { status: 503 });
-  }
-
   const db = getDb();
   const applied: string[] = [];
   const problems: string[] = [];
@@ -151,6 +149,7 @@ export async function POST(request: Request) {
     ok: problems.length === 0,
     applied,
     problems,
+    mirrored: canWrite(),
     route: config ? { startDate: config.startDate, totalDistance: config.totalDistance, stops: stopCount } : null,
   });
 }
