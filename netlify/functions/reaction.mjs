@@ -1,5 +1,0 @@
-import { getStore } from '@netlify/blobs';
-const headers={'content-type':'application/json; charset=utf-8','cache-control':'no-store'};
-const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers});
-export default async request=>{if(request.method==='GET'){const store=getStore('k2k-community');return json((await store.get('reactions',{type:'json'}))||{cheer:0,follow:0})}if(request.method!=='POST')return json({error:'Method not allowed'},405);let body;try{body=await request.json()}catch{return json({error:'Invalid JSON'},400)}const type=body.type;if(!['cheer','follow'].includes(type))return json({error:'Invalid reaction'},400);const store=getStore('k2k-community');const current=(await store.get('reactions',{type:'json'}))||{cheer:0,follow:0};current[type]=Math.min(99999999,(Number(current[type])||0)+1);await store.setJSON('reactions',current);return json({ok:true,counts:current})};
-export const config={path:'/api/reaction',method:['GET','POST'],rateLimit:{action:'rate_limit',aggregateBy:'ip',windowSize:60,windowLimit:15}};

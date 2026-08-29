@@ -1,0 +1,48 @@
+import type { Journey, WalkRoute } from "./types";
+
+export const defaultRoute: WalkRoute = {
+  title: "A Long Walk",
+  startDate: "2026-12-18",
+  paceKmPerDay: 25,
+  totalDistance: 4270,
+  updatedAt: null,
+  stops: [
+    { name: "Kanyakumari", state: "Tamil Nadu", lat: 8.0883, lon: 77.5385, km: 0, note: "The southern tip and the first step." },
+    { name: "Madurai", state: "Tamil Nadu", lat: 9.9252, lon: 78.1198, km: 250, note: "First major southern checkpoint." },
+    { name: "Salem", state: "Tamil Nadu", lat: 11.6643, lon: 78.146, km: 520, note: "Transition toward Karnataka." },
+    { name: "Bengaluru", state: "Karnataka", lat: 12.9716, lon: 77.5946, km: 700, note: "A confirmed major stop." },
+    { name: "Hyderabad", state: "Telangana", lat: 17.385, lon: 78.4867, km: 1270, note: "The route turns through Telangana." },
+    { name: "Nagpur", state: "Maharashtra", lat: 21.1458, lon: 79.0882, km: 1770, note: "Central India checkpoint before Jabalpur and Rewa." },
+    { name: "Jabalpur", state: "Madhya Pradesh", lat: 23.1815, lon: 79.9864, km: 2050, note: "North-east through Madhya Pradesh." },
+    { name: "Rewa", state: "Madhya Pradesh", lat: 24.5362, lon: 81.3037, km: 2290, note: "A personally significant stop on the working route." },
+    { name: "Prayagraj", state: "Uttar Pradesh", lat: 25.4358, lon: 81.8463, km: 2420, note: "The road reaches the Ganga corridor." },
+    { name: "Varanasi", state: "Uttar Pradesh", lat: 25.3176, lon: 82.9739, km: 2540, note: "A confirmed stop because the city changed Navneet’s life." },
+    { name: "Lucknow", state: "Uttar Pradesh", lat: 26.8467, lon: 80.9462, km: 2860, note: "Sponsor, friends and a major expedition stop." },
+    { name: "Delhi", state: "Delhi", lat: 28.6139, lon: 77.209, km: 3420, note: "Major northern checkpoint." },
+    { name: "Jammu", state: "Jammu & Kashmir", lat: 32.7266, lon: 74.857, km: 4000, note: "Gateway to the final section." },
+    { name: "Srinagar", state: "Jammu & Kashmir", lat: 34.0837, lon: 74.7973, km: 4270, note: "The working finish at Lal Chowk." },
+  ],
+};
+
+export const defaultJourney: Journey = {
+  mode: "preparation",
+  status: "Preparing",
+  day: 0,
+  distanceToday: 0,
+  distanceTotal: 0,
+  stepsToday: 0,
+  walkingMinutes: 0,
+  currentPlace: "Lucknow, Uttar Pradesh",
+  lat: 26.8467,
+  lon: 80.9462,
+  temperature: null,
+  altitude: null,
+  battery: null,
+  connectivity: "Preparation mode",
+  lastSleep: "Lucknow",
+  latestTitle: "The walk before the walk",
+  latestText: "Training, saving, finding partners and preparing to cross India at walking speed.",
+  latestUrl: "/journal",
+  sponsorName: "Partnership open",
+  updatedAt: null,
+};
