@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import type { JournalEntry, Journey, MediaItem, PublicMessage, RouteStop, RouteSuggestion, WalkRoute } from "@/lib/types";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/embed";
+import { Assistant } from "./assistant";
 
 type AdminMessage = PublicMessage & { contact: string };
 type BookRow = { id: string; name: string; contact: string; city: string; format: string; note: string; createdAt: string };
@@ -335,6 +336,7 @@ export function AdminConsole() {
       </div>
       <p className="today-where">Showing you at <b>{journey.currentPlace || "nowhere yet"}</b>. Tap <b>Where am I?</b> to set it from this phone&apos;s GPS.</p>
     </section>}
+    <Assistant token={token.trim()} />
 {askMind && <section className="mind-card">
       <div className="mind-head"><b>You are in {askMind.place}</b><button type="button" aria-label="Not now" onClick={() => setAskMind(null)}>✕</button></div>
       <p className="mind-q">What&apos;s on your mind?</p>
