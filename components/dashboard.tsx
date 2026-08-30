@@ -26,8 +26,16 @@ export function Dashboard() {
   // Progress follows the position along the route, not the raw distance walked.
   // On a detour those differ, and the raw figure would claim towns had been
   // passed that are still ahead.
-  const live = journey.mode === "live";
+  // Whether the walk has begun is a question about the calendar, not about a
+  // switch in the admin panel. Before the start date the figures read zero
+  // however much the tracker banked getting ready - it recorded a bus ride to
+  // Raxaul as 28.5 km walked, and no reader should ever see that on a page
+  // that promises the distance is real.
+  const started = walkDay(route.startDate) >= 1;
+  const live = journey.mode === "live" && started;
   const fix = positioned(journey);
+  const walked = started ? journey.distanceTotal : 0;
+  const walkedToday = started ? journey.distanceToday : 0;
   // Worked out from the position every time, not from the stored progress
   // figure, which is only written when GPS is processed and goes stale between.
   const ahead = useMemo(() => predictNext(route.stops, journey), [route, journey]);
@@ -47,9 +55,9 @@ export function Dashboard() {
       return Math.max(0, Math.round((start - today) / 86400000));
     }
     const day = Math.max(journey.day, walkDay(route.startDate));
-    const pace = livePace(journey.distanceTotal, day, calendarPace(route.paceKmPerDay));
+    const pace = livePace(walked, day, calendarPace(route.paceKmPerDay));
     return Math.max(0, Math.ceil((route.totalDistance - along) / Math.max(1, pace)));
-  }, [live, route, journey, along]);
+  }, [live, route, journey, along, walked]);
 
   async function react(type: "cheer" | "follow") {
     const key = `alw-${type}-${type === "cheer" ? new Date().toISOString().slice(0, 10) : "saved"}`;
@@ -75,19 +83,19 @@ export function Dashboard() {
     <>
       <section className="dashboard-hero">
         <div className="map-copy">
-          <div className="status-line"><span><i />{journey.mode === "live" ? "LIVE WALK" : "PREPARATION MODE"}</span><small>{journey.updatedAt ? `Updated ${new Date(journey.updatedAt).toLocaleString("en-IN")}` : "GPS begins on day one"}</small></div>
-          <div><p>KANYAKUMARI → KASHMIR</p><h1>{journey.currentPlace}</h1><span>{journey.mode === "live" ? `Day ${journey.day} · ${number.format(journey.distanceToday)} km today` : "Preparing to walk India from south to north."}</span></div>
+          <div className="status-line"><span><i />{live ? "LIVE WALK" : "PREPARATION MODE"}</span><small>{journey.updatedAt ? `Updated ${new Date(journey.updatedAt).toLocaleString("en-IN")}` : "GPS begins on day one"}</small></div>
+          <div><p>KANYAKUMARI → KASHMIR</p><h1>{journey.currentPlace}</h1><span>{live ? `Day ${journey.day} · ${number.format(walkedToday)} km today` : "Preparing to walk India from south to north."}</span></div>
         </div>
         <LiveMap stops={route.stops} journey={journey} compact />
       </section>
 
       <section className="metric-grid" aria-label="Walk metrics">
-        <article><small>DAY</small><strong>{journey.mode === "live" ? journey.day : "—"}</strong><span>{journey.mode === "live" ? "Expedition day" : "Before start"}</span></article>
-        <article><small>TOTAL DISTANCE</small><strong>{number.format(journey.distanceTotal)}<em> km</em></strong><span>of {number.format(route.totalDistance)} km</span></article>
+        <article><small>DAY</small><strong>{live ? journey.day : "—"}</strong><span>{live ? "Expedition day" : "Before start"}</span></article>
+        <article><small>TOTAL DISTANCE</small><strong>{number.format(walked)}<em> km</em></strong><span>of {number.format(route.totalDistance)} km</span></article>
         <article>
           <small>{live ? "DAYS REMAINING" : "DAYS TO THE FIRST STEP"}</small>
           <strong>{daysLeft}</strong>
-          <span>{live ? `to Srinagar at ${livePace(journey.distanceTotal, Math.max(journey.day, walkDay(route.startDate)), calendarPace(route.paceKmPerDay)).toFixed(1)} km/day` : `Kanyakumari · ${formatWalkDate(istNoon(route.startDate))}`}</span>
+          <span>{live ? `to Srinagar at ${livePace(walked, Math.max(journey.day, walkDay(route.startDate)), calendarPace(route.paceKmPerDay)).toFixed(1)} km/day` : `Kanyakumari · ${formatWalkDate(istNoon(route.startDate))}`}</span>
         </article>
         <article>
           <small>{ahead ? "NEXT STOP" : "ROUTE STARTS AT"}</small>
