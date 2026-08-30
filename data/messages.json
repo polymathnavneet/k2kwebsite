@@ -1,5 +1,17 @@
 {
   "note": "The public wall. Contact details are never written here. Edit a reply, then press \"Pull edits from GitHub\" in the admin panel to apply it. Messages are matched by id - adding one here does not create it on the site.",
-  "updatedAt": null,
-  "messages": []
+  "updatedAt": "2026-08-29T11:19:36.009Z",
+  "messages": [
+    {
+      "id": "fbc56ce1-6793-4ff9-a84e-6825edad07e9",
+      "type": "place",
+      "name": "Navneet",
+      "place": "Bettiah",
+      "message": "Holaaaog og y y y 9g 8y y0byvtcir to iricot t9ott ofof ycuvubu y",
+      "status": "public",
+      "reply": "Lol that's me",
+      "createdAt": "2026-08-29 08:22:52",
+      "repliedAt": "2026-08-29T11:19:36.009Z"
+    }
+  ]
 }

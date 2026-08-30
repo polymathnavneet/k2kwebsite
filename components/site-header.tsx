@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 
 const links = [
   ["Route", "/route"],
+  ["About", "/about"],
+  ["Partner", "/sponsor"],
   ["Messages", "/messages"],
   ["Journal", "/journal"],
   ["Pictures", "/gallery"],

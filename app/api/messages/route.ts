@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { messages } from "@/db/schema";
 import { mirrorMessages } from "@/lib/mirror";
 import { clean, isAdmin, publicText } from "@/lib/server";
+import seed from "@/data/messages.json";
 
 export async function GET(request: Request) {
   const db = getDb();
@@ -12,6 +13,15 @@ export async function GET(request: Request) {
     const rows = await db.select().from(messages).orderBy(desc(messages.createdAt)).limit(1000);
     return Response.json({ rows });
   }
+  // A wall with nothing on it reads as a wall that does not work. Moving to new
+  // hosting emptied the table, so the messages already published are planted
+  // back from the repository file - the same file the mirror writes, which by
+  // design carries no contact details.
+  const [any] = await db.select({ id: messages.id }).from(messages).limit(1);
+  if (!any && seed.messages.length) {
+    await db.insert(messages).values(seed.messages.map(row => ({ ...row, contact: "" }))).onConflictDoNothing();
+  }
+
   const rows = await db
     .select({
       id: messages.id,
