@@ -1,0 +1,123 @@
+{
+  "note": "Facts taken from Navneet's sponsorship proposal (December 2026 - May 2027). The /sponsor and /about pages are built from this file, so both assistants can correct a number here rather than hunting through the pages. Contact details are deliberately absent: this repository is public.",
+  "source": "Navneet Kumar · Kanyakumari to Kashmir Sponsorship Proposal",
+  "person": {
+    "age": 20,
+    "from": "West Champaran, Bihar",
+    "living": "Lucknow",
+    "studying": "Third year, BA English Honours, APS University, Rewa",
+    "books": 3,
+    "halfMarathons": "Two run, a third on 9 August 2026",
+    "instagram": "polymath_navneet"
+  },
+  "record": {
+    "claim": "Attempting to become the youngest person to walk from Kanyakumari to Kashmir",
+    "ageAtStart": "21 years and 2 days",
+    "ageAtFinish": "About 21 years and 6 months",
+    "caveats": [
+      "No records body currently maintains a category for the youngest person to walk this route.",
+      "Guinness recognises a fastest journey on foot between Kashmir and Kanyakumari, not a youngest one. An application is pending and unanswered.",
+      "A walker named Rakshit Shrivastava states he walked Ladakh to Kanyakumari - a longer route - at a younger age. That is self-reported and not verified by any records body."
+    ]
+  },
+  "verification": [
+    "Live GPS tracking, publicly accessible, embeddable on a partner's own website.",
+    "Daily geotagged posts from the route, timestamped.",
+    "A stamped physical logbook, endorsed at post offices, police stations or district offices along the way.",
+    "Monthly written reports to sponsors: distance covered, content published, reach delivered, money spent."
+  ],
+  "standing": [
+    { "item": "India Post", "status": "Verbal, senior officer", "detail": "A senior India Post officer, since promoted to Postmaster General of the Rajkot Region, has offered to help arrange accommodation at postal facilities. That is a personal offer of support and introductions, not a national institutional arrangement. Navneet is seeking it in writing." },
+    { "item": "Guinness", "status": "Applied, no response", "detail": "Application submitted. No category for this record currently exists." },
+    { "item": "Press", "status": "Informal contacts", "detail": "Journalists known to Navneet have indicated they will cover the start. Nothing is committed in writing." },
+    { "item": "Creators", "status": "Informal support", "detail": "Several creators have offered to amplify at launch." },
+    { "item": "Other sponsors", "status": "None to date", "detail": "This is the first round. Early partners get the cleanest association." }
+  ],
+  "audience": {
+    "instagramFollowers": "About 4,000",
+    "averageReelViews": "About 1,000",
+    "breakouts": [
+      "209,328 views · 38,770 viewers · 5.4 views per viewer · 713 new followers",
+      "183,134 views · 13,821 viewers · 13.3 views per viewer · 3,209 new followers"
+    ],
+    "combined": "392,462 views and 3,922 followers, at about ₹7.50 per follower",
+    "youtubeSubscribers": "About 50 - the channel begins properly with the walk",
+    "who": "Predominantly male, 18-35. Top cities Varanasi, Lucknow, Delhi.",
+    "honestCaveat": "About 500 posts, and a typical one gets a thousand views. Two of those 500 produced almost the entire following. The account is inconsistent - and when it connects, it connects hard."
+  },
+  "deliverables": [
+    { "what": "Short-form content", "floor": "20 pieces a month (reels / shorts)" },
+    { "what": "Dedicated product features", "floor": "5 a month, built around the product" },
+    { "what": "Long-form video", "floor": "1 documentary-style video a month" },
+    { "what": "Logo presence", "floor": "Backpack banner, tent and apparel, every walking day" },
+    { "what": "Sponsor report", "floor": "Monthly: distance, content, reach, spend" },
+    { "what": "Live tracker", "floor": "Public GPS link, embeddable on your website" },
+    { "what": "Trackable link or code", "floor": "For attribution, if you want one" }
+  ],
+  "placement": [
+    { "surface": "Front banner panel", "detail": "Primary placement, roughly 37 x 23 cm on the front of the pack. The surface in every photograph, every roadside conversation and every piece of press coverage." },
+    { "surface": "Lid panel", "detail": "Secondary placement for a supporting partner." },
+    { "surface": "Tent flysheet", "detail": "In every campsite frame and every morning-routine video, over 180 nights." },
+    { "surface": "Apparel", "detail": "Chest and sleeve placement on walking shirts." },
+    { "surface": "On screen", "detail": "End-card on all twenty-plus monthly video pieces, plus link in bio." }
+  ],
+  "tiers": [
+    { "name": "Title Partner", "amount": "₹2,00,000", "slots": "One slot only", "includes": "Everything. Primary logo placement on gear, tent and banner. Named as title partner across all content and press. 5 dedicated product features monthly. Named in the book. Full content library licensed. Category exclusivity." },
+    { "name": "Journey Partner", "amount": "₹50,000", "slots": "Four slots", "includes": "Secondary logo placement. 2 dedicated product features monthly. Named in the book. Content library licensed." },
+    { "name": "Gear Partner", "amount": "In kind", "slots": "By category", "includes": "Product instead of cash - footwear, tent, backpack, camera, power, apparel. Product-in-use content across the full walk, plus honest long-term reviews at 1,000, 2,500 and 4,000 km." },
+    { "name": "Supporter", "amount": "₹10,000+", "slots": "Open", "includes": "Named on the website and in the book. Logo in end-cards. Minimum participation." }
+  ],
+  "terms": [
+    "Payment: 100% on signing, or milestones against distance on request - 40% on signing, 30% at 1,500 km, 30% at 2,900 km.",
+    "Exclusivity: available by category.",
+    "Categories refused: alcohol, tobacco, betting, gambling, crypto speculation, or anything Navneet would not put in front of a nineteen-year-old reader.",
+    "Editorial: he will say true things about the product. If it fails at 2,000 km, he will say so. That is what makes the other 179 days credible."
+  ],
+  "risk": {
+    "walkingIt": "On foot, the whole way. If a stretch is impassable, he does not skip it - he resumes from the same point and walks that section. The GPS log is public throughout.",
+    "pauses": "A pause is not a failure. If injured he stops, treats it, and resumes from the point he stopped. A pause of any length is still one walk.",
+    "ifItEnds": "No cash refund - the money is committed to gear before departure and spent on food daily thereafter.",
+    "whatYouKeep": [
+      "Every piece of content produced to that point, with a perpetual licence.",
+      "Every post stays live. Nothing is deleted.",
+      "All exposure already delivered.",
+      "Your name in the book, which is written whether the walk is completed or not.",
+      "Unused gear returned at his cost."
+    ]
+  },
+  "budget": {
+    "total": "₹2,08,000",
+    "ask": "₹2,00,000",
+    "inKind": "₹80,000 can be met with product rather than cash",
+    "lines": [
+      { "line": "Food, 180 days", "amount": "₹81,000", "note": "About ₹450 a day. Walking 27 km burns 4,000-5,000 calories." },
+      { "line": "Action camera and accessories", "amount": "₹35,000", "note": "In kind." },
+      { "line": "Footwear", "amount": "₹16,000", "note": "Four pairs. Walking shoes last 800-1,200 km. In kind." },
+      { "line": "Shelter", "amount": "₹12,000", "note": "Tent, winter-rated sleeping bag, mat. In kind." },
+      { "line": "Pack and rain cover", "amount": "₹6,000", "note": "70-95 litre. In kind." },
+      { "line": "Apparel", "amount": "₹6,000", "note": "In kind." },
+      { "line": "Power", "amount": "₹5,000", "note": "Power banks for remote stretches. In kind." },
+      { "line": "Medical and first aid", "amount": "₹6,000", "note": "Blister care, taping, medicines." },
+      { "line": "Water purification", "amount": "₹2,000", "note": "Filter and tablets." },
+      { "line": "Gear replacement", "amount": "₹10,000", "note": "Things fail over 4,000 km." },
+      { "line": "Storage and connectivity", "amount": "₹6,000", "note": "Cloud storage and mobile data." },
+      { "line": "Entity registration", "amount": "₹3,000", "note": "Sole proprietorship and current account." },
+      { "line": "Emergency reserve", "amount": "₹20,000", "note": "Medical, evacuation, unplanned transport." }
+    ]
+  },
+  "meetups": {
+    "planned": 14,
+    "guaranteed": 10,
+    "how": "Free, no ticket, no RSVP. Where the road allows it people walk the last stretch into the city; where it does not, everyone gathers at a cafe. Announced in two stages - city and rough week two to three weeks ahead, exact time two to three days before.",
+    "forPartners": "Send staff. Sample product. Set up a stall. Ten to fourteen cities with a physical touchpoint and no venue cost, because there is no venue.",
+    "honest": "Nobody knows how many will come. The first may draw eight. What is committed is that at least ten happen, each announced and documented, with partners named in every post."
+  },
+  "againstAdBudget": [
+    { "wins": "Raw impressions", "why": "₹2,00,000 buys 1.5 to 4 million impressions on Meta. This cannot promise anything near that. If cost per thousand impressions is your only metric, buy the ads." },
+    { "wins": "Targeting", "why": "Meta targets by age, city, interest and behaviour. This audience is who it is." },
+    { "wins": "Attribution", "why": "Meta reports clicks and conversions. Here it is a trackable link and a discount code, and that is the extent of it." },
+    { "wins": "Speed", "why": "A campaign delivers in weeks. This delivers over six months." },
+    { "wins": "Certainty", "why": "Ads always run. A walker might get injured." }
+  ],
+  "recommendation": "Do not move money out of performance marketing to fund this. Fund it from the budget line that exists for brand association, sponsorship, or founder-led bets - the money that would otherwise go to a hoarding or an event with far less story in it."
+}
