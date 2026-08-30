@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     return Response.json({ ok: true });
   }
 
-  const allowed = ["place", "story", "support", "question"];
+  const allowed = ["place", "story", "support", "question", "sponsor"];
   const type = allowed.includes(String(body.type)) ? String(body.type) : "question";
   const name = clean(body.name, 60);
   const contact = clean(body.contact, 160);
@@ -81,7 +81,10 @@ export async function POST(request: Request) {
   // Everything goes on the wall as it arrives. Only likely spam is held back,
   // and that still lands in the admin sheet where it can be released.
   const spam = /(https?:\/\/.*){2,}|casino|crypto giveaway|viagra/i.test(message);
-  const status = spam ? "held" : "public";
+  // A sponsorship enquiry is a business conversation, not a note to the wall.
+  // Publishing one would put a brand's interest, and often a budget, in front
+  // of every other brand reading the page.
+  const status = type === "sponsor" ? "held" : spam ? "held" : "public";
   // A send that timed out but actually arrived is retried from the outbox with
   // the same clientId. Using it as the row id makes the retry a no-op instead
   // of a second copy of somebody's message.

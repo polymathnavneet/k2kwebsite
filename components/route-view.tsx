@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, dayOfWalk, livePace } from "@/lib/geo";
-import { onCourse } from "@/lib/position";
+import { predictNext } from "@/lib/position";
 import { formatWalkDate } from "@/lib/time";
 import { LiveMap } from "./live-map";
 
@@ -14,8 +14,10 @@ export function RouteView() {
 
   const estimate = useMemo(() => {
     // Which town is next follows the position, not a flag somebody has to
-    // remember to set in the admin panel. See lib/position.ts.
-    const live = onCourse(journey);
+    // remember to set in the admin panel, and not the stored progress figure
+    // either. See predictNext in lib/position.ts.
+    const ahead = predictNext(route.stops, journey);
+    const live = Boolean(ahead);
     // Count the day from the calendar rather than a typed-in number, so the
     // pace is right even when a field update gets missed.
     const day = live ? Math.max(journey.day, dayOfWalk(route.startDate)) : 0;
@@ -25,7 +27,7 @@ export function RouteView() {
     // The planned figure is per walking day; projecting a finish needs the
     // calendar rate, which allows for rest days.
     const pace = live ? livePace(journey.distanceTotal, day, route.paceKmPerDay) : calendarPace(route.paceKmPerDay);
-    const along = live ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
+    const along = ahead?.alongKm ?? 0;
     const base = live ? new Date() : new Date(`${route.startDate}T12:00:00`);
     const stops = route.stops.map(stop => ({
       ...stop,
@@ -39,7 +41,7 @@ export function RouteView() {
       stops,
       walked: live ? journey.distanceTotal : 0,
       along,
-      offRoute: journey.offRouteKm ?? 0,
+      offRoute: ahead?.offRouteKm ?? 0,
       // Before the first step nothing is "next": the walk starts at the start.
       next: live ? (stops.find(stop => !stop.reached) ?? stops.at(-1)) : null,
       finish: stops.at(-1)?.eta,
