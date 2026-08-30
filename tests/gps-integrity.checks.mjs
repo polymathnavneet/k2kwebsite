@@ -108,3 +108,19 @@ console.log("  6 km/day reported as 6 (no floor) | 100 km/day capped at 50");
 console.log("✓ walking slowly counts in full and is reported honestly\n");
 
 console.log("ALL GPS INTEGRITY CHECKS PASSED");
+
+// --- counting must not start before the walk does -------------------------
+// The tracker booked 28.5 km of a bus ride from Bettiah to Raxaul as walked,
+// three and a half months before the first step. The speed guard could not
+// catch it: the fixes were far enough apart to imply a walking pace. Only the
+// date can catch it.
+{
+  // dayOfWalk in lib/geo.ts is walkDay; assert the behaviour the guard relies on.
+  const beforeStart = time.walkDay("2026-12-17", new Date("2026-08-30T05:14:00Z"));
+  const onStart = time.walkDay("2026-12-17", new Date("2026-12-17T05:00:00Z"));
+  const later = time.walkDay("2026-12-17", new Date("2027-01-05T05:00:00Z"));
+  assert.equal(beforeStart, 0, "before the start date there is no day of walk");
+  assert.ok(onStart >= 1, "the start date is day one");
+  assert.ok(later > onStart, "and it climbs from there");
+  console.log(`  counting  30 Aug -> day ${beforeStart} (nothing counts) · 17 Dec -> day ${onStart} · 5 Jan -> day ${later}`);
+}

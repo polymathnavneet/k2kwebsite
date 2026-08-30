@@ -93,7 +93,20 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
 
   const previous = existing ?? { id: 1, ...defaultJourney };
   const startDate = config?.startDate ?? defaultRoute.startDate;
-  const live = previous.mode === "live";
+  // Counting starts on the day the walk starts, not on the day somebody
+  // remembers to flip a switch.
+  //
+  // The tracker went live in preparation and immediately booked 28.5 km of a
+  // bus ride from Bettiah to Raxaul as walked. The fixes were spaced far enough
+  // apart that the speed guard saw a plausible walking pace between them, so
+  // nothing caught it - and a site whose whole claim is that the distance is
+  // real cannot be counting travel months before the first step.
+  //
+  // Before the start date the position is still recorded, so the map and the
+  // pin follow him around; it just does not add up to anything. On the morning
+  // of the start date it begins counting by itself, with nothing to remember.
+  const started = dayOfWalk(startDate) >= 1;
+  const live = previous.mode === "live" && started;
   const previousAlong = Number(previous.routeProgressKm) || 0;
 
   // Oldest first, so the walk is replayed in the order it happened.
@@ -217,7 +230,7 @@ function explain(state: {
   rejected: TrackResult["rejected"]; onRoute: boolean; offRouteKm: number;
   reached: string[]; next?: string; suggestion: TrackResult["suggestion"];
 }) {
-  if (!state.live) return "Position saved. Switch the journey to Live and the distance starts counting.";
+  if (!state.live) return "Position saved. Distance starts counting on the first day of the walk.";
 
   const parts: string[] = [];
   if (state.duplicatePoints && !state.acceptedPoints) {
