@@ -5,10 +5,10 @@
  * route and the map still show something true rather than an empty screen.
  */
 
-const SHELL = "alw-shell-v1";
-const DATA = "alw-data-v1";
+const SHELL = "alw-shell-v2";
+const DATA = "alw-data-v2";
 
-const PAGES = ["/", "/route", "/messages", "/book", "/journal", "/ahead", "/ahead/place", "/ahead/story", "/ahead/support", "/ahead/question", "/games", "/admin"];
+const PAGES = ["/", "/route", "/about", "/sponsor", "/messages", "/book", "/journal", "/gallery", "/ahead", "/ahead/place", "/ahead/story", "/ahead/support", "/ahead/question", "/games", "/admin"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -59,23 +59,32 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // Pages: serve from cache first so they open instantly and without signal,
-  // and refresh the copy in the background for next time.
+  // Pages: the network first, with the cache close behind.
+  //
+  // Serving the cache first made every visit show the previous visit's page.
+  // A change published minutes ago only appeared on the second opening, which
+  // is why the site kept needing a pull-to-refresh to show anything new. The
+  // network is tried first and given three seconds - long enough for a weak
+  // signal, short enough not to feel broken - and the cached copy answers if
+  // that fails or times out. Offline behaviour is unchanged: no network means
+  // the cache, immediately.
   if (request.mode === "navigate") {
-    event.respondWith(
-      caches.match(request).then(cached => {
-        const network = fetch(request)
-          .then(response => {
-            if (response.ok) {
-              const copy = response.clone();
-              caches.open(SHELL).then(cache => cache.put(request, copy));
-            }
-            return response;
-          })
-          .catch(() => cached || caches.match("/"));
-        return cached || network;
-      })
-    );
+    event.respondWith((async () => {
+      try {
+        const response = await Promise.race([
+          fetch(request),
+          new Promise((resolve, reject) => setTimeout(() => reject(new Error("slow")), 3000)),
+        ]);
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(SHELL).then(cache => cache.put(request, copy));
+        }
+        return response;
+      } catch {
+        const cached = await caches.match(request);
+        return cached || (await caches.match("/")) || new Response("", { status: 503 });
+      }
+    })());
     return;
   }
 

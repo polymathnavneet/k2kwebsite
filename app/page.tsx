@@ -19,6 +19,15 @@ export default function Home() {
       <Dashboard />
       <Countdown />
 
+      {/* High enough that a brand does not have to read to the bottom of the
+          page to find out that sponsorship is open at all. */}
+      <section className="sponsor-call">
+        <div className="shell sponsor-call-inner">
+          <div><b>This walk is looking for its partners.</b><span>Title partnership ₹2,00,000 · four slots at ₹50,000 · gear in kind.</span></div>
+          <Link className="primary-button" href="/sponsor">Sponsor this walk →</Link>
+        </div>
+      </section>
+
       <section className="proof-strip">
         <div className="shell">
           <div className="section-tag warm">03 · HOW YOU WILL KNOW IT HAPPENED</div>
