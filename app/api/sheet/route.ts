@@ -22,6 +22,7 @@ import { defaultJourney, defaultRoute } from "@/lib/defaults";
  */
 
 const KINDS = ["journey", "route", "timeline", "journal", "messages", "gps"] as const;
+const EVERYTHING = "all";
 type Kind = (typeof KINDS)[number];
 
 /** RFC 4180: quote everything, double the quotes inside. Excel and Sheets agree on this. */
@@ -30,15 +31,43 @@ const csv = (rows: unknown[][]) => rows.map(row => row.map(cell).join(",")).join
 
 export async function GET(request: Request) {
   const of = new URL(request.url).searchParams.get("of") ?? "";
-  if (!KINDS.includes(of as Kind)) {
-    return new Response(`Ask for one of: ${KINDS.join(", ")}\r\nExample: /api/sheet?of=journal\r\n`, {
+  if (of !== EVERYTHING && !KINDS.includes(of as Kind)) {
+    return new Response(`Ask for one of: ${[EVERYTHING, ...KINDS].join(", ")}\r\nExample: /api/sheet?of=all\r\n`, {
       status: 400, headers: { "content-type": "text/plain; charset=utf-8" },
     });
   }
 
   const db = getDb();
+
+  // One call for the lot.
+  //
+  // Six feeds meant six formulas in six places, and every one of those is a
+  // chance for a setup to be half done and quietly wrong. This stacks all six
+  // under their own headings so a single IMPORTDATA in a single cell keeps an
+  // entire spreadsheet current - nine months of walking, one formula, pasted
+  // once.
+  if (of === EVERYTHING) {
+    const titles: Record<Kind, string> = {
+      journey: "WHERE HE IS NOW", route: "THE ROUTE", timeline: "BEFORE THE FIRST STEP",
+      journal: "THE JOURNAL", messages: "THE PUBLIC WALL", gps: "THE GPS TRAIL",
+    };
+    const everything: unknown[][] = [
+      ["A LONG WALK · Kanyakumari to Kashmir · Navneet Kumar"],
+      ["This sheet fills itself from the website. Do not type in it - anything you add is overwritten."],
+      ["Read at", new Date().toISOString()],
+    ];
+    for (const kind of KINDS) {
+      everything.push([], [titles[kind]], ...(await build(db, kind)));
+    }
+    return csvResponse(everything);
+  }
+
   const rows = await build(db, of as Kind);
 
+  return csvResponse(rows);
+}
+
+function csvResponse(rows: unknown[][]) {
   return new Response(csv(rows), {
     headers: {
       "content-type": "text/csv; charset=utf-8",
