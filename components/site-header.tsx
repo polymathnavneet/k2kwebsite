@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { LivePin } from "@/components/live-pin";
 import { useEffect, useState } from "react";
 
 const links = [
@@ -28,6 +29,7 @@ export function SiteHeader() {
       .catch(() => setStatus("PREPARATION"));
   }, []);
   return (
+    <>
     <header className="site-header">
       <Link className="brand" href="/" onClick={() => setOpen(false)}>
         <strong>ALW</strong>
@@ -41,5 +43,7 @@ export function SiteHeader() {
         {links.map(([label, href]) => <Link key={href} href={href} onClick={() => setOpen(false)}>{label}</Link>)}
       </nav>
     </header>
+    <LivePin />
+    </>
   );
 }
