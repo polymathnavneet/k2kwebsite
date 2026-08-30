@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUp, CloudDownload, Download, LocateFixed, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,24 @@ export function AdminConsole() {
   const [replies, setReplies] = useState<Record<string, string>>({});
   const [mirrorsBack, setMirrorsBack] = useState(false);
   const [busyRow, setBusyRow] = useState("");
+  const [flash, setFlash] = useState("");
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Say something the person can actually see.
+   *
+   * Every button here reported what it had done, into a status line at the top
+   * of the admin bar. On a phone, pressing "Publish route" at the bottom of a
+   * long page means that line is several screens away - so every press looked
+   * like nothing had happened. The same words now also appear next to the
+   * thumb that pressed the button, and the bar keeps the last one.
+   */
+  function say(text: string) {
+    setStatus(text);
+    setFlash(text);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(""), 6000);
+  }
   const [rowNote, setRowNote] = useState<Record<string, string>>({});
   const [suggestions, setSuggestions] = useState<RouteSuggestion[]>([]);
   const [edits, setEdits] = useState<Record<string, { name: string; km: string }>>({});
@@ -52,7 +70,7 @@ export function AdminConsole() {
   }
 
   async function loadAll() {
-    setStatus("Syncing…");
+    say("Syncing…");
     try {
       const [journeyData, routeData, messageData, bookData] = await Promise.all([
         fetch("/api/journey").then(response => response.json()),
@@ -78,12 +96,12 @@ export function AdminConsole() {
       setReplies(current => Object.fromEntries(messageData.rows.map(row =>
         [row.id, current[row.id] !== undefined ? current[row.id] : (row.reply || "")])));
       setToken(token.trim()); setConnected(true); localStorage.setItem("alw-admin-token", token.trim());
-      setStatus(`Synced · ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`);
+      say(`Synced · ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`);
     } catch (error) {
       setConnected(false);
       const message = error instanceof Error ? error.message : "Could not connect";
       // Only a rejected passcode is a passcode problem.
-      setStatus(/unauthor/i.test(message) ? "That passcode was not accepted." : `${message}. Check your connection.`);
+      say(/unauthor/i.test(message) ? "That passcode was not accepted." : `${message}. Check your connection.`);
     }
   }
 
@@ -94,8 +112,8 @@ export function AdminConsole() {
   // Sync a GPS fix. The server measures it against the last one and moves the
   // distance walked by itself, so every arrival date recalculates.
   function syncGps() {
-    if (!navigator.geolocation) return setStatus("GPS is unavailable on this device.");
-    setStatus("Finding your location…");
+    if (!navigator.geolocation) return say("GPS is unavailable on this device.");
+    say("Finding your location…");
     navigator.geolocation.getCurrentPosition(async position => {
       try {
         const result = await request<{ reason: string; journey: Journey; suggestion: RouteSuggestion | null }>("/api/gps", {
@@ -104,29 +122,29 @@ export function AdminConsole() {
           body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }),
         });
         setJourney(result.journey);
-        setStatus(result.reason);
+        say(result.reason);
         // The phone is already in your hand and you have just looked at it.
         // That is the moment a question actually gets answered.
         setAskMind({ place: result.journey.currentPlace || "here", reason: result.reason });
         setMind("");
         // A new place found on the road becomes a question, not a silent edit.
         if (result.suggestion) setSuggestions(current => [result.suggestion as RouteSuggestion, ...current]);
-      } catch (error) { setStatus(error instanceof Error ? error.message : "Could not sync GPS"); }
-    }, error => setStatus(error.message), { enableHighAccuracy: true, timeout: 15000 });
+      } catch (error) { say(error instanceof Error ? error.message : "Could not sync GPS"); }
+    }, error => say(error.message), { enableHighAccuracy: true, timeout: 15000 });
   }
 
   // Pull hand-edited data/*.json out of the repository and make it live.
   async function pullFromGithub() {
-    setStatus("Pulling edits from GitHub…");
+    say("Pulling edits from GitHub…");
     try {
       const result = await request<{ applied: string[]; problems: string[] }>("/api/sync", { method: "POST" });
       await loadAll();
-      setStatus(result.problems.length
+      say(result.problems.length
         ? `Problems: ${result.problems.join(" · ")}`
         : result.applied.length
           ? `Pulled from GitHub: ${result.applied.join(" · ")}.${mirrorsBack ? "" : " (Changes made here are not written back to the files - that part needs a GitHub token.)"}`
           : "GitHub had nothing new.");
-    } catch (error) { setStatus(error instanceof Error ? error.message : "Could not pull from GitHub"); }
+    } catch (error) { say(error instanceof Error ? error.message : "Could not pull from GitHub"); }
   }
 
   async function decideSuggestion(suggestion: RouteSuggestion, action: "accept" | "dismiss") {
@@ -143,20 +161,20 @@ export function AdminConsole() {
         }),
       });
       setSuggestions(current => current.filter(row => row.id !== suggestion.id));
-      setStatus(action === "accept" && result.added
+      say(action === "accept" && result.added
         ? `${result.added.name} added to the route at ${result.added.km.toLocaleString("en-IN")} km. Every date after it has recalculated.`
         : "Dismissed. The route is unchanged.");
       if (action === "accept") {
         const fresh = await fetch("/api/route").then(response => response.json());
         setRoute(fresh);
       }
-    } catch (error) { setStatus(error instanceof Error ? error.message : "Could not save that"); }
+    } catch (error) { say(error instanceof Error ? error.message : "Could not save that"); }
     finally { setBusyRow(""); }
   }
 
   async function saveToday() {
-    if (!picked.length && answer.trim().length < 3) return setStatus("Tap at least one thing, or write a line.");
-    setStatus("Publishing…");
+    if (!picked.length && answer.trim().length < 3) return say("Tap at least one thing, or write a line.");
+    say("Publishing…");
     try {
       const result = await request<{ replaced: boolean }>("/api/journal", {
         method: "POST",
@@ -165,14 +183,14 @@ export function AdminConsole() {
       });
       setToday(current => current && { ...current, answered: true });
       setDaysSince(0);
-      setStatus(result.replaced ? "Today's entry updated. It is live on the journal." : "Published to the journal.");
-    } catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish"); }
+      say(result.replaced ? "Today's entry updated. It is live on the journal." : "Published to the journal.");
+    } catch (error) { say(error instanceof Error ? error.message : "Could not publish"); }
   }
 
   // A one-line thought, published where you stood when you thought it.
   async function saveMind() {
-    if (mind.trim().length < 2) return setStatus("Write a word or two first.");
-    setStatus("Publishing…");
+    if (mind.trim().length < 2) return say("Write a word or two first.");
+    say("Publishing…");
     try {
       await request("/api/journal", {
         method: "POST",
@@ -183,13 +201,13 @@ export function AdminConsole() {
       setMind("");
       setDaysSince(0);
       setToday(current => current && { ...current, answered: true });
-      setStatus("Published to the journal.");
-    } catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish"); }
+      say("Published to the journal.");
+    } catch (error) { say(error instanceof Error ? error.message : "Could not publish"); }
   }
 
   async function addMedia() {
-    if (!newMedia.url.trim()) return setStatus("Paste a link first.");
-    setStatus("Adding…");
+    if (!newMedia.url.trim()) return say("Paste a link first.");
+    say("Adding…");
     try {
       await request("/api/media", {
         method: "POST",
@@ -199,8 +217,8 @@ export function AdminConsole() {
       setNewMedia({ url: "", caption: "", place: "" });
       const shots = await fetch("/api/media").then(response => response.json());
       setGallery(shots.rows || []);
-      setStatus("Added. It is on the Pictures page now.");
-    } catch (error) { setStatus(error instanceof Error ? error.message : "Could not add that link"); }
+      say("Added. It is on the Pictures page now.");
+    } catch (error) { say(error instanceof Error ? error.message : "Could not add that link"); }
   }
 
   async function removeMedia(id: string) {
@@ -212,15 +230,15 @@ export function AdminConsole() {
         body: JSON.stringify({ action: "remove", id }),
       });
       setGallery(current => current.filter(row => row.id !== id));
-      setStatus("Removed.");
-    } catch (error) { setStatus(error instanceof Error ? error.message : "Could not remove that"); }
+      say("Removed.");
+    } catch (error) { say(error instanceof Error ? error.message : "Could not remove that"); }
     finally { setBusyRow(""); }
   }
 
   async function saveJourney() {
-    setStatus("Publishing journey update…");
-    try { await request("/api/journey", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(journey) }); setStatus("Journey update is live."); }
-    catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish"); }
+    say("Publishing journey update…");
+    try { await request("/api/journey", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(journey) }); say("Journey update is live."); }
+    catch (error) { say(error instanceof Error ? error.message : "Could not publish"); }
   }
 
   function editStop(index: number, key: keyof RouteStop, value: string) {
@@ -228,9 +246,9 @@ export function AdminConsole() {
   }
 
   async function saveRoute() {
-    setStatus("Publishing route…");
-    try { const result = await request<{ route: WalkRoute }>("/api/route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(route) }); setRoute(result.route); setStatus("Route is live. Every arrival date recalculated."); }
-    catch (error) { setStatus(error instanceof Error ? error.message : "Could not publish route"); }
+    say("Publishing route…");
+    try { const result = await request<{ route: WalkRoute }>("/api/route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(route) }); setRoute(result.route); say("Route is live. Every arrival date recalculated."); }
+    catch (error) { say(error instanceof Error ? error.message : "Could not publish route"); }
   }
 
   async function messageAction(id: string, action: "reply" | "publish" | "hide") {
@@ -266,11 +284,11 @@ export function AdminConsole() {
         : action === "publish" ? "Published. It is on the public wall now."
         : "Hidden. It is off the public wall.";
       setRowNote(current => ({ ...current, [id]: said }));
-      setStatus(said);
+      say(said);
     } catch (error) {
       const said = error instanceof Error ? error.message : "Could not save that";
       setRowNote(current => ({ ...current, [id]: said }));
-      setStatus(said);
+      say(said);
     } finally {
       setBusyRow("");
     }
@@ -295,6 +313,7 @@ export function AdminConsole() {
   if (!connected) return <section className="admin-login"><h1>Your walk.<br />One control room.</h1><p>Use the private passcode once. It stays only on this phone. Extra spaces are ignored.</p><form onSubmit={event => { event.preventDefault(); loadAll(); }}><Input type="password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={token} onChange={event => setToken(event.target.value)} placeholder="Private passcode" /><Button type="submit" disabled={token.trim().length < 8}>Open control room</Button></form><p role="status">{status}</p></section>;
 
   return <section className="admin-app">
+    {flash && <div className="admin-flash" role="status" onClick={() => setFlash("")}>{flash}</div>}
     <div className="admin-bar"><div><b>A LONG WALK</b><span>{status}</span></div><Button variant="outline" onClick={loadAll}><RefreshCw /> Refresh</Button><Button variant="outline" onClick={pullFromGithub}><CloudDownload /> Pull edits from GitHub</Button><Button variant="outline" onClick={() => { localStorage.removeItem("alw-admin-token"); setConnected(false); setToken(""); }}>Change passcode</Button></div>
     {today && <section className={today.answered ? "today-card done" : "today-card"}>
       <div className="today-head">
