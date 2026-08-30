@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { messages } from "@/db/schema";
 import { mirrorMessages } from "@/lib/mirror";
-import { clean, isAdmin, publicText } from "@/lib/server";
+import { clean, isAdmin, isAssistant, publicText } from "@/lib/server";
 import seed from "@/data/messages.json";
 
 export async function GET(request: Request) {
@@ -51,9 +51,14 @@ export async function POST(request: Request) {
   }
 
   if (body.action) {
-    if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const admin = isAdmin(request);
+    // Replying in public is the one thing the daily check-in may do here.
+    // Hiding a message and putting one on the wall stay with the passcode.
+    const assistant = isAssistant(request);
+    if (!admin && !assistant) return Response.json({ error: "Unauthorized" }, { status: 401 });
     const id = clean(body.id, 80);
     const action = clean(body.action, 20);
+    if (!admin && action !== "reply") return Response.json({ error: "That needs the admin passcode." }, { status: 403 });
     if (action === "reply") {
       const reply = publicText(body.reply);
       if (!reply) return Response.json({ error: "Write a reply first" }, { status: 400 });

@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import { journalEntries, journey } from "@/db/schema";
 import { defaultJourney } from "@/lib/defaults";
 import { promptForDay, tapsForMode, todayKey } from "@/lib/prompts";
-import { clean, isAdmin, publicText } from "@/lib/server";
+import { clean, isAdmin, isAssistant, publicText } from "@/lib/server";
 
 /**
  * GET  /api/journal -> the published entries, plus today's question
@@ -46,7 +46,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  // The daily check-in carries a key that publishes entries and nothing else,
+  // so deleting is refused below even though writing is allowed here.
+  const admin = isAdmin(request);
+  const assistant = isAssistant(request);
+  if (!admin && !assistant) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: Record<string, unknown>;
   try {
@@ -59,6 +63,7 @@ export async function POST(request: Request) {
   const action = clean(body.action, 20) || "answer";
 
   if (action === "remove") {
+    if (!admin) return Response.json({ error: "That needs the admin passcode." }, { status: 403 });
     await db.delete(journalEntries).where(eq(journalEntries.id, clean(body.id, 80)));
     return Response.json({ ok: true, removed: true });
   }

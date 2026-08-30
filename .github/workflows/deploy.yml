@@ -84,6 +84,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
           TRACK_KEY: ${{ secrets.TRACK_KEY }}
+          ASSISTANT_KEY: ${{ secrets.ASSISTANT_KEY }}
         run: |
           put() {
             if [ -z "$2" ]; then
@@ -96,6 +97,9 @@ jobs:
           # Lets a phone tracker app add positions and nothing else. Separate
           # from the admin passcode on purpose: it lives in a URL on a phone.
           put TRACK_KEY "$TRACK_KEY"
+          # Lets the daily check-in publish a journal entry or a public reply,
+          # and nothing else. It has to live on a server, so it is worth losing.
+          put ASSISTANT_KEY "$ASSISTANT_KEY"
 
       # Put the address on the run's summary page, so finding it does not mean
       # reading a log.
