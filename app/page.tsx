@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Countdown } from "@/components/countdown";
 import { Dashboard } from "@/components/dashboard";
 import proposal from "@/data/proposal.json";
 import { SiteFooter } from "@/components/site-footer";
@@ -16,6 +17,8 @@ export default function Home() {
     <main>
       <SiteHeader />
       <Dashboard />
+      <Countdown />
+
       <section className="proof-strip">
         <div className="shell">
           <div className="section-tag warm">03 · HOW YOU WILL KNOW IT HAPPENED</div>

@@ -1,0 +1,47 @@
+{
+  "note": "The run-up to the first step. Each entry has a date; the homepage works out on its own what is done, what is next and how many days are left, so nothing here needs touching as time passes. Edit a date and the countdown follows it. Dates are Indian time.",
+  "startDate": "2026-12-17",
+  "steps": [
+    {
+      "date": "2026-09-30",
+      "title": "Rucksack and tent, bought in the sale",
+      "detail": "The two things the whole walk sits on, bought while they are cheap rather than in a hurry in November."
+    },
+    {
+      "date": "2026-11-29",
+      "title": "Turns 21. Resigns the same day.",
+      "detail": "Birthday in Lucknow, and the last day of the job. The walk stops being a plan that afternoon."
+    },
+    {
+      "date": "2026-12-05",
+      "title": "Lucknow to Bettiah",
+      "detail": "Home to West Champaran, to leave behind everything that is not coming to Kanyakumari."
+    },
+    {
+      "date": "2026-12-06",
+      "title": "Bettiah to Banaras",
+      "detail": "Out of the hometown, west to the city where the train south begins."
+    },
+    {
+      "date": "2026-12-08",
+      "title": "The Banaras to Kanyakumari train",
+      "detail": "The whole country in one direction, by rail, in order to walk back up it."
+    },
+    {
+      "date": "2026-12-11",
+      "title": "Arrives Kanyakumari",
+      "detail": "Three days on a train, then a few days standing still on purpose. The legs start the walk rested or not at all."
+    },
+    {
+      "date": "2026-12-14",
+      "title": "Rameswaram, with sister and grandmother",
+      "detail": "Family first, before six months of walking away from them."
+    },
+    {
+      "date": "2026-12-17",
+      "title": "The first step",
+      "detail": "Vivekananda Rock, Kanyakumari. 4,270 km to Srinagar, on foot.",
+      "final": true
+    }
+  ]
+}
