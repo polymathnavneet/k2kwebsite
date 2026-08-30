@@ -1,5 +1,5 @@
-import Link from "next/link";
 import type { Metadata } from "next";
+import { SponsorForm } from "@/components/sponsor-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import proposal from "@/data/proposal.json";
@@ -21,7 +21,7 @@ export default function SponsorPage() {
       <h1>4,000 kilometres.<br />One pair of legs.<br />Your logo on all of it.</h1>
       <p>A billboard is passed. A walker is approached. For 180 consecutive days, through ten states, your name travels the length of India on a man who people stop to talk to — and every one of those conversations names you.</p>
       <p className="hero-ask">Title partner ₹2,00,000 · four supporting slots at ₹50,000 · gear partnerships in kind · minimum participation ₹10,000.</p>
-      <Link className="primary-button" href="/ahead/support">Start a conversation →</Link>
+      <a className="primary-button" href="#talk">Start a conversation ↓</a>
     </section>
 
     <section className="compare-grid shell">
@@ -92,12 +92,17 @@ export default function SponsorPage() {
       <div className="audience-figures">
         <article><small>INSTAGRAM</small><strong>{audience.instagramFollowers}</strong><span>@polymath_navneet</span></article>
         <article><small>TYPICAL REEL</small><strong>{audience.averageReelViews}</strong><span>views</span></article>
-        <article><small>YOUTUBE</small><strong>{audience.youtubeSubscribers}</strong><span>begins with the walk</span></article>
+        <article><small>YOUTUBE</small><strong>{audience.youtubeSubscribers}</strong><span>{audience.youtubeNote}</span></article>
       </div>
       <p><b>Two breakout posts:</b></p>
       <ul className="plain-list">{audience.breakouts.map(line => <li key={line}>{line}</li>)}</ul>
       <p>Combined: {audience.combined}.</p>
       <p className="note-line"><b>The honest caveat, and it cuts both ways.</b> {audience.honestCaveat}</p>
+      <a className="ig-card" href="https://www.instagram.com/polymath_navneet/" target="_blank" rel="noopener noreferrer">
+        <span className="ig-mark" aria-hidden="true">◎</span>
+        <span className="ig-body"><b>@polymath_navneet</b><small>The account, the training log, and the two posts above. Open it and judge for yourself.</small></span>
+        <span className="ig-go" aria-hidden="true">→</span>
+      </a>
     </section>
 
     {/* The section that makes the rest believable. It stays on the page. */}
@@ -126,11 +131,11 @@ export default function SponsorPage() {
       <ul className="plain-list">{risk.whatYouKeep.map(item => <li key={item}>{item}</li>)}</ul>
     </section>
 
-    <section className="closing-block shell">
+    <section id="talk" className="closing-block shell">
       <div className="section-tag light">12 · NEXT</div>
       <h2>The walk is happening.<br />The only question is whose name is on it.</h2>
       <p>Take a twenty-minute call. Ask the hard questions — most of them are already asked and answered in here, and where the answer is weak it says so rather than hiding it.</p>
-      <Link className="primary-button" href="/ahead/support">Get in touch →</Link>
+      <SponsorForm />
     </section>
 
     <SiteFooter />

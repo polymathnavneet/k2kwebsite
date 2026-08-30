@@ -1,4 +1,5 @@
-import type { Journey } from "@/lib/types";
+import { nextStopAfter, projectOntoRoute } from "@/lib/route-math";
+import type { Journey, RouteStop } from "@/lib/types";
 
 /**
  * How far off the drawn line still counts as walking it.
@@ -36,4 +37,34 @@ export function positioned(journey: Journey) {
  */
 export function onCourse(journey: Journey) {
   return positioned(journey) && (journey.offRouteKm ?? 0) <= OFF_ROUTE_KM;
+}
+
+/**
+ * Where the walk is heading next, worked out from the GPS position itself.
+ *
+ * This used to go quiet whenever the position was more than OFF_ROUTE_KM from
+ * the line, on the grounds that "next stop" could not be trusted. That was the
+ * wrong call. Standing in Bettiah, 218 km east of the route, the position still
+ * projects cleanly onto the line just past Varanasi, and the next town north is
+ * Sultanpur - which is the answer somebody following a walk to Kashmir wants,
+ * and is nothing like the "Nagercoil, 22 km" the old flag-based version gave.
+ *
+ * So it always answers, and reports how far off the line the answer was taken
+ * from, rather than refusing to answer at all. The stored progress figure is
+ * ignored: it is only written when GPS is processed, so it goes stale the
+ * moment a position arrives by any other route.
+ */
+export function predictNext(stops: RouteStop[], journey: Journey) {
+  if (!positioned(journey) || !Array.isArray(stops) || stops.length < 2) return null;
+  const projected = projectOntoRoute(stops, journey.lat, journey.lon);
+  if (!projected) return null;
+  const next = nextStopAfter(stops, projected.alongKm);
+  return {
+    alongKm: projected.alongKm,
+    offRouteKm: projected.offRouteKm,
+    next: next ?? stops[stops.length - 1],
+    toNextKm: Math.max(0, (next ?? stops[stops.length - 1]).km - projected.alongKm),
+    // Far enough off the line that the answer deserves saying so out loud.
+    strayed: projected.offRouteKm > OFF_ROUTE_KM,
+  };
 }

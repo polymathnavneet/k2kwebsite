@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Share2 } from "lucide-react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, livePace } from "@/lib/geo";
-import { onCourse, positioned } from "@/lib/position";
+import { positioned, predictNext } from "@/lib/position";
 import { formatWalkDate, istNoon, walkDay } from "@/lib/time";
 import { LiveMap } from "./live-map";
 
@@ -28,13 +28,11 @@ export function Dashboard() {
   // passed that are still ahead.
   const live = journey.mode === "live";
   const fix = positioned(journey);
-  const tracking = onCourse(journey);
-  const along = tracking ? (journey.routeProgressKm ?? journey.distanceTotal) : 0;
-
-  const next = useMemo(
-    () => (tracking ? route.stops.find(stop => stop.km > along) ?? route.stops.at(-1) : null),
-    [route, along, tracking]
-  );
+  // Worked out from the position every time, not from the stored progress
+  // figure, which is only written when GPS is processed and goes stale between.
+  const ahead = useMemo(() => predictNext(route.stops, journey), [route, journey]);
+  const along = ahead?.alongKm ?? 0;
+  const next = ahead?.next ?? null;
 
   /**
    * Days left, which is the number that actually means something day to day.
@@ -92,21 +90,19 @@ export function Dashboard() {
           <span>{live ? `to Srinagar at ${livePace(journey.distanceTotal, Math.max(journey.day, walkDay(route.startDate)), calendarPace(route.paceKmPerDay)).toFixed(1)} km/day` : `Kanyakumari · ${formatWalkDate(istNoon(route.startDate))}`}</span>
         </article>
         <article>
-          <small>{tracking ? "NEXT STOP" : "ROUTE STARTS AT"}</small>
-          <strong className="place-metric">{tracking ? (next?.name ?? "The road") : route.stops[0]?.name}</strong>
-          <span>{tracking
-            ? (next ? `${number.format(next.km - along)} km ahead` : "Finish")
-            : fix
-              ? `You are in ${journey.currentPlace}`
-              : "Waiting for the first position"}</span>
+          <small>{ahead ? "NEXT STOP" : "ROUTE STARTS AT"}</small>
+          <strong className="place-metric">{ahead ? next?.name : route.stops[0]?.name}</strong>
+          <span>{ahead
+            ? `${number.format(ahead.toNextKm)} km up the route${ahead.strayed ? ` · ${number.format(ahead.offRouteKm)} km off the line` : ""}`
+            : "Waiting for the first position"}</span>
         </article>
       </section>
 
+      {/* Steps, weather and altitude have gone: nothing fed them, so they read
+          "Awaiting data" and "—" beside figures that were real. */}
       <section className="signal-grid">
+        <article><small>WHERE</small><strong>{fix ? `Navneet is in ${journey.currentPlace}` : "Position not sent yet"}</strong></article>
         <article><small>STATUS</small><strong>{journey.status}</strong></article>
-        <article><small>STEPS</small><strong>{number.format(journey.stepsToday)}</strong></article>
-        <article><small>WEATHER</small><strong>{journey.temperature == null ? "Awaiting data" : `${journey.temperature}°C`}</strong></article>
-        <article><small>ALTITUDE</small><strong>{journey.altitude == null ? "—" : `${number.format(journey.altitude)} m`}</strong></article>
         <article><small>SIGNAL</small><strong>{journey.connectivity}</strong></article>
         <article><small>LAST SLEPT</small><strong>{journey.lastSleep}</strong></article>
       </section>
