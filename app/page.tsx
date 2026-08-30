@@ -69,7 +69,7 @@ export default function Home() {
         </div>
       </section>
       <SiteFooter />
-      <nav className="mobile-dock"><Link href="/">Dashboard</Link><Link href="/route">Route</Link><Link href="/messages">Messages</Link><Link href="/book">Book</Link></nav>
+      <nav className="mobile-dock"><Link href="/">Home</Link><Link href="/route">Route</Link><Link href="/messages">Messages</Link><Link href="/book">Book</Link><Link className="dock-sponsor" href="/sponsor">Sponsor</Link></nav>
     </main>
   );
 }
