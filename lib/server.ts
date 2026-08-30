@@ -21,16 +21,35 @@ export function isAdmin(request: Request) {
  * only offer a URL box.
  */
 export function isTracker(request: Request) {
-  const runtime = env as unknown as { TRACK_KEY?: string };
-  const expected = runtime.TRACK_KEY?.trim() ?? "";
-  if (expected.length < 12) return false;
+  return matchesKey(request, (env as unknown as { TRACK_KEY?: string }).TRACK_KEY, "x-track-key");
+}
+
+/**
+ * The daily check-in, writing on Navneet's behalf.
+ *
+ * The scheduled job that pings him each evening has to live on a server, so
+ * whatever it carries has to be worth losing. This key can do two things -
+ * publish a journal entry, and publish a reply under a message on the wall -
+ * and nothing else. It cannot hide a message, touch the route, change the
+ * walk's status, read a private contact detail or export anything. Losing it
+ * costs some text on a public page that Navneet can delete, which is a very
+ * different loss from the admin passcode.
+ */
+export function isAssistant(request: Request) {
+  return matchesKey(request, (env as unknown as { ASSISTANT_KEY?: string }).ASSISTANT_KEY, "x-assistant-key");
+}
+
+/** Shared by the tracker and the assistant: same shape, different key. */
+function matchesKey(request: Request, expected: string | undefined, header: string) {
+  const wanted = expected?.trim() ?? "";
+  if (wanted.length < 12) return false;
   const url = new URL(request.url);
-  const supplied = (url.searchParams.get("key") ?? request.headers.get("x-track-key") ?? "").trim();
-  if (supplied.length !== expected.length) return false;
+  const supplied = (url.searchParams.get("key") ?? request.headers.get(header) ?? "").trim();
+  if (supplied.length !== wanted.length) return false;
   // Compare every character regardless, so a wrong key cannot be narrowed down
   // by how quickly it is rejected.
   let same = 0;
-  for (let index = 0; index < expected.length; index += 1) same |= expected.charCodeAt(index) ^ supplied.charCodeAt(index);
+  for (let index = 0; index < wanted.length; index += 1) same |= wanted.charCodeAt(index) ^ supplied.charCodeAt(index);
   return same === 0;
 }
 
