@@ -171,3 +171,20 @@ export const assistantMemory = sqliteTable("assistant_memory", {
   count: integer("count").notNull().default(0),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+/**
+ * The run-up to the first step: the dates between resigning and Kanyakumari.
+ *
+ * It lived in data/timeline.json, which meant changing a date needed a deploy.
+ * Here it can be edited from the admin panel, and the step marked final carries
+ * the walk's start date - so moving that one date moves every arrival date on
+ * the route with it.
+ */
+export const timelineSteps = sqliteTable("timeline_steps", {
+  id: text("id").primaryKey(),
+  day: text("day").notNull(),
+  title: text("title").notNull(),
+  detail: text("detail").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isFinal: integer("is_final").notNull().default(0),
+});
