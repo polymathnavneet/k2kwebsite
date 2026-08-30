@@ -15,10 +15,15 @@ const ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 
 export async function reverseGeocode(lat: number, lon: number): Promise<Place | null> {
   try {
-    const url = `${ENDPOINT}?format=jsonv2&zoom=12&lat=${lat}&lon=${lon}`;
+    // Ask for English names. Without this Nominatim answers in the local
+    // script, and the site reported "वीरगञ्ज, मधेश प्रदेश" on an English page
+    // the moment the walk touched the Nepal border. The same would have
+    // happened in Tamil, Kannada and Telugu the whole way up the route.
+    const url = `${ENDPOINT}?format=jsonv2&zoom=12&accept-language=en&lat=${lat}&lon=${lon}`;
     const response = await fetch(url, {
       headers: {
         "user-agent": "a-long-walk (walk tracker; https://github.com/polymathnavneet/k2kwebsite)",
+        "accept-language": "en",
         accept: "application/json",
       },
       signal: AbortSignal.timeout(6000),
