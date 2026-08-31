@@ -11,7 +11,7 @@ const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 const formatIso = (date: Date) => new Date(date.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 
 export function Dashboard() {
-  const { journey, route, trail } = useLiveJourney();
+  const { journey, route, trail } = useLiveJourney({ trail: true });
 
   const started = walkDay(route.startDate) >= 1;
   const live = journey.mode === "live" && started;
