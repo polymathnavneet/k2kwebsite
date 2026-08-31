@@ -2,17 +2,16 @@
 
 import { useMemo } from "react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
-import { calendarPace, dayOfWalk, distanceKm, livePace } from "@/lib/geo";
+import { calendarPace, dayOfWalk, livePace } from "@/lib/geo";
 import { predictNext } from "@/lib/position";
 import { formatWalkDate } from "@/lib/time";
 import { LiveMap } from "./live-map";
 
 const date = formatWalkDate;
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
-const VISIT_RADIUS_KM = 12;
 
 export function RouteView() {
-  const { journey, route, trail } = useLiveJourney({ trail: true });
+  const { journey, route, trail, places } = useLiveJourney({ trail: true });
 
   const estimate = useMemo(() => {
     const started = dayOfWalk(route.startDate) >= 1;
@@ -22,24 +21,17 @@ export function RouteView() {
       ? livePace(journey.distanceTotal, day, route.paceKmPerDay)
       : calendarPace(route.paceKmPerDay);
 
-    // Forecasts are allowed to look ahead, but they never become the public
-    // route. That privilege belongs to the GPS points below.
+    // Future stops are prediction input only. They never draw the route and
+    // never enter the list of places below until GPS has actually named them.
     const ahead = live ? predictNext(route.stops, journey) : null;
     const remaining = Math.max(0, route.totalDistance - journey.distanceTotal);
     const finish = live ? new Date(Date.now() + remaining / Math.max(1, pace) * 86400000) : null;
 
-    // A named place counts as visited only if the GPS trail physically passed
-    // close to its coordinates. Its planned kilometre number is irrelevant.
-    const visited = live ? route.stops.flatMap(stop => {
-      const hit = trail.find(point => distanceKm(point.lat, point.lon, stop.lat, stop.lon) <= VISIT_RADIUS_KM);
-      return hit ? [{ stop, recordedAt: hit.recordedAt }] : [];
-    }).sort((a, b) => a.recordedAt.localeCompare(b.recordedAt)) : [];
+    return { live, pace, ahead, finish };
+  }, [route, journey]);
 
-    return { live, day, pace, ahead, finish, visited };
-  }, [route, journey, trail]);
-
-  const currentAlreadyNamed = estimate.visited.some(item =>
-    journey.currentPlace.toLowerCase().includes(item.stop.name.toLowerCase())
+  const currentAlreadyNamed = places.some(place =>
+    journey.currentPlace.toLowerCase().startsWith(place.name.toLowerCase())
   );
 
   return <>
@@ -56,7 +48,7 @@ export function RouteView() {
     <section className="dynamic-route shell">
       <div className="route-note">
         <div className="section-tag">ACTUAL ROAD ONLY</div>
-        <p>The red line is assembled from GPS fixes that passed the walking checks. A planned city, a shortcut, or a road in a spreadsheet cannot add itself. If Navneet changes direction, the next GPS fixes change this route with him.</p>
+        <p>The red line is assembled from GPS fixes that passed the walking checks. The place list is built from towns the tracker actually reported. A planned city, shortcut or spreadsheet cannot add itself.</p>
       </div>
 
       {estimate.live && estimate.ahead && <div className="route-forecast">
@@ -67,18 +59,18 @@ export function RouteView() {
 
       <div className="section-tag route-recorded-tag">PLACES THE GPS HAS ACTUALLY REACHED</div>
       <div className="stop-list actual-stop-list">
-        {estimate.visited.map((item, index) => <article className="reached" key={`${item.stop.name}-${item.recordedAt}`}>
-          <div><b>{String(index + 1).padStart(2, "0")}</b><span>{date(new Date(item.recordedAt))}</span></div>
-          <div><h2>{item.stop.name}</h2><p>{item.stop.state}</p><small>Recorded on the walked GPS trail.</small></div>
+        {places.map((place, index) => <article className="reached" key={`${place.name}-${place.state}-${place.firstSeen}`}>
+          <div><b>{String(index + 1).padStart(2, "0")}</b><span>{date(new Date(place.firstSeen))}</span></div>
+          <div><h2>{place.name}</h2><p>{place.state}</p><small>First recorded at about {number.format(place.distanceKm)} km of GPS-counted walking.</small></div>
         </article>)}
 
         {estimate.live && !currentAlreadyNamed && <article className="reached current-road-place">
-          <div><b>{String(estimate.visited.length + 1).padStart(2, "0")}</b><span>NOW</span></div>
+          <div><b>{String(places.length + 1).padStart(2, "0")}</b><span>NOW</span></div>
           <div><h2>{journey.currentPlace}</h2><p>{journey.precisePlace || "Latest GPS position"}</p><small>This is the newest recorded place. It stays here unless the GPS moves.</small></div>
         </article>}
 
         {!estimate.live && <div className="route-empty"><b>The route is intentionally empty.</b><p>Before the first walking fix there is no honest walked line to draw.</p></div>}
-        {estimate.live && !estimate.visited.length && currentAlreadyNamed && <div className="route-empty"><b>GPS trail recorded.</b><p>Named places will appear here as the trail reaches them.</p></div>}
+        {estimate.live && !places.length && currentAlreadyNamed && <div className="route-empty"><b>GPS trail recorded.</b><p>Named places will appear here as the tracker reaches them.</p></div>}
       </div>
     </section>
   </>;
