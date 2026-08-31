@@ -323,13 +323,36 @@ export async function reconcile(db: Db) {
   const { distanceTotal, distanceToday } = await totals(db);
   const day = started ? dayOfWalk(startDate) : previous.day;
 
-  if (distanceTotal === previous.distanceTotal && distanceToday === previous.distanceToday && day === previous.day) return null;
+  // Ask again what this position is called.
+  //
+  // The published name is only ever written when a fix arrives, so a name that
+  // was wrong stayed wrong until the phone next reported - and the phone is
+  // about to report a great deal less often, to save its battery. The site
+  // spent a day telling readers Navneet was in "Sarojani Nagar" while he stood
+  // thirty kilometres away, and waiting on his next fix to correct that is not
+  // good enough.
+  //
+  // One lookup per run, so it repairs itself within a quarter of an hour of a
+  // fix or a fix of the naming. Ninety-six lookups a day is far inside what
+  // Nominatim asks for, and a failure returns null and simply keeps the name
+  // it had.
+  const placePatch: { currentPlace?: string } = {};
+  if (Number.isFinite(previous.lat) && Number.isFinite(previous.lon)) {
+    const place = await reverseGeocode(previous.lat, previous.lon);
+    const named = place ? [place.name, place.state].filter(Boolean).join(", ") : "";
+    if (named && named !== previous.currentPlace) placePatch.currentPlace = named;
+  }
+
+  const figuresMatch = distanceTotal === previous.distanceTotal
+    && distanceToday === previous.distanceToday
+    && day === previous.day;
+  if (figuresMatch && !placePatch.currentPlace && !(started && previous.mode !== "live")) return null;
 
   await db.update(journey)
-    .set({ distanceTotal, distanceToday, day, ...(started && previous.mode !== "live" ? { mode: "live" } : {}) })
+    .set({ distanceTotal, distanceToday, day, ...placePatch, ...(started && previous.mode !== "live" ? { mode: "live" } : {}) })
     .where(eq(journey.id, 1));
 
-  return { distanceTotal, distanceToday, day };
+  return { distanceTotal, distanceToday, day, ...placePatch };
 }
 
 /**

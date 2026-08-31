@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const messages = sqliteTable("messages", {
   id: text("id").primaryKey(),
@@ -78,6 +78,24 @@ export const reactions = sqliteTable("reactions", {
   type: text("type").primaryKey(),
   count: integer("count").notNull().default(0),
 });
+
+/**
+ * The same cheers, broken up by day.
+ *
+ * The all-time total above is a number that only ever goes up, which is not
+ * something anybody checks twice. What Navneet wants to know at the end of a
+ * day on the road is how many people cheered him *today*, and that needs a day
+ * against each one.
+ */
+export const reactionDays = sqliteTable(
+  "reaction_days",
+  {
+    day: text("day").notNull(),
+    type: text("type").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  table => [primaryKey({ columns: [table.day, table.type] })]
+);
 
 /**
  * Places the site has spotted and wants Navneet to confirm before touching the

@@ -6,6 +6,11 @@ import { LivePin } from "@/components/live-pin";
 import { useEffect, useState } from "react";
 
 const links = [
+  // First, because being asked things is the thing he wants most from this
+  // site and it used to be reachable only by scrolling two thirds down the
+  // homepage and reading a list.
+  ["Ask Navneet", "/ahead/question"],
+  ["Walk with me", "/ahead/walk"],
   ["Route", "/route"],
   ["About", "/about"],
   ["Partner", "/sponsor"],
