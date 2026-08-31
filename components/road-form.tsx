@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { send } from "@/lib/outbox";
 
-type Kind = "place" | "story" | "support" | "question" | "walk";
+type Kind = "place" | "story" | "support" | "road" | "question" | "walk";
 
 /**
  * The promise, in one line, wherever somebody is about to write to him.
@@ -58,6 +58,6 @@ export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind
     <ReplyPromise className="wide" />
     <p className="public-choice wide">Your name, place and message go on the public wall straight away. Your contact detail is never published — it is only so Navneet can reach you.</p>
     <button className="primary-button wide" type="submit" disabled={sending}>{sending ? "Sending…" : buttonLabel}</button>
-    {status && <p className="form-status wide" role="status">{status} {status.startsWith("Published") && <Link href="/messages">See it →</Link>}</p>}
+    {status && <p className="form-status wide" role="status">{status} {status.startsWith("Published") && <Link href={kind === "question" ? "/journal#questions" : "/messages"}>See it →</Link>}</p>}
   </form>;
 }

@@ -95,7 +95,8 @@ export function Assistant({ token }: { token: string }) {
     }
   }
 
-  // Type anything at it: a distance, a place, a link, a reply, or just the day.
+  // Type anything at it: a thought, a link, a reply, or just the day. GPS owns
+  // location and distance, so neither is accepted as a typed fact.
   async function sendChat() {
     const text = chat.trim();
     if (text.length < 2) return;
@@ -229,7 +230,7 @@ export function Assistant({ token }: { token: string }) {
       <Input
         value={chat}
         onChange={event => setChat(event.target.value)}
-        placeholder="Or just tell me — &ldquo;walked 18 km&rdquo;, &ldquo;in Nagpur&rdquo;, paste a link…"
+        placeholder="Or just tell me — write a field note, reply to someone, paste a link…"
         aria-label="Tell the assistant anything"
         disabled={busy}
       />

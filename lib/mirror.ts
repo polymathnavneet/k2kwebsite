@@ -27,8 +27,12 @@ export async function mirrorMessages(db: Db) {
       message: messages.message,
       status: messages.status,
       reply: messages.reply,
+      followUp: messages.followUp,
+      followUpReply: messages.followUpReply,
       createdAt: messages.createdAt,
       repliedAt: messages.repliedAt,
+      followUpAt: messages.followUpAt,
+      followUpRepliedAt: messages.followUpRepliedAt,
     })
     .from(messages)
     .where(ne(messages.status, "hidden"))

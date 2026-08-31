@@ -99,6 +99,17 @@ export async function POST(request: Request) {
       return done(db, `Replied to ${clean(context.name, 60) || "them"}. It is on the wall now.`);
     }
 
+    case "follow-up-reply": {
+      const id = clean(context.messageId, 80);
+      const reply = publicText(answer);
+      if (!reply) return Response.json({ error: "Write a reply first." }, { status: 400 });
+      await db.update(messages)
+        .set({ followUpReply: reply, status: "public", followUpRepliedAt: new Date().toISOString() })
+        .where(eq(messages.id, id));
+      await mirrorMessages(db);
+      return done(db, `Answered ${clean(context.name, 60) || "their"} follow-up. The two-answer conversation is complete.`);
+    }
+
     /* ------------------------------------------------------- how was today */
     case "journal": {
       const text = multiline(answer, 1200);
@@ -128,22 +139,7 @@ export async function POST(request: Request) {
 
     /* --------------------------------------------------- distance by hand */
     case "distance": {
-      const km = Number(answer);
-      if (!Number.isFinite(km) || km < 0 || km > 100) {
-        return Response.json({ error: "Give a distance in kilometres, between 0 and 100." }, { status: 400 });
-      }
-      const [current] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
-      const base = current ?? { id: 1, ...defaultJourney };
-      const next = {
-        ...base,
-        id: 1,
-        distanceToday: km,
-        // Typed by hand, so it adds to the total the GPS did not see.
-        distanceTotal: Math.round((base.distanceTotal + km) * 10) / 10,
-        updatedAt: new Date().toISOString(),
-      };
-      await db.insert(journey).values(next).onConflictDoUpdate({ target: journey.id, set: next });
-      return done(db, `${km} km added by hand. Every arrival date has recalculated.`);
+      return done(db, "I did not add a typed distance. Walked kilometres come only from recorded GPS points, so the public total stays verifiable.");
     }
 
     /* ------------------------------------------------------- a picture */
@@ -193,12 +189,8 @@ export async function POST(request: Request) {
           return done(db, acknowledge(`status is now ${intent.status.toLowerCase()}.`));
         }
 
-        case "place": {
-          const [current] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
-          const next = { ...(current ?? { id: 1, ...defaultJourney }), id: 1, currentPlace: intent.place, updatedAt: new Date().toISOString() };
-          await db.insert(journey).values(next).onConflictDoUpdate({ target: journey.id, set: next });
-          return done(db, acknowledge(`you are in ${intent.place}.`, "Sync your GPS when you can and the distance follows."));
-        }
+        case "place":
+          return done(db, `I did not change your location to ${intent.place}. Your public location comes only from GPS; use the GPS button if the tracker has not caught up.`);
 
         case "reply": {
           // Match the name against people actually waiting.

@@ -229,6 +229,7 @@
 .progress-strip small{display:block;font-size:7px;font-weight:900;letter-spacing:.11em;opacity:.65}
 .progress-strip strong{display:block;font-size:19px;line-height:1.1;margin-top:5px;letter-spacing:-.03em}
 .progress-strip strong.off{color:var(--red)}
+.progress-strip .gps-age{display:block;margin-top:4px;font-size:11px;line-height:1.25;opacity:.65}
 @media(min-width:700px){.suggestions .fields{grid-template-columns:1.4fr 1fr}.suggestions .decide{grid-template-columns:auto auto;justify-content:start}.progress-strip{grid-template-columns:repeat(4,1fr)}.progress-strip div{border-bottom:0}.progress-strip div:nth-child(2n){border-right:1px solid var(--ink)}.progress-strip div:last-child{border-right:0}}
 
 .off-route-note{border-left:5px solid var(--red);background:var(--paper-2);padding:12px 14px;margin:0 0 22px;font-size:13px;font-weight:700;max-width:760px}
@@ -403,3 +404,64 @@ input,textarea,select{font-size:16px}
 /* A long word in a heading could push the page sideways at 320px. */
 h1,h2,h3{overflow-wrap:break-word}
 body{overflow-x:hidden}
+
+/* The old "Latest field signal" and "Today in the field" cards repeated
+   stale admin fields. The useful interactive controls remain as one compact
+   strip, after the much more important invitation to talk to Navneet. */
+.compact-response{padding-block:45px;border-bottom:1px solid var(--ink)}
+
+/* Journal and questions now share one public room. */
+.journal-ask{background:var(--cream);border-bottom:1px solid var(--ink);scroll-margin-top:112px}
+.journal-ask .form-section{padding-top:22px}
+.combined-section{border-bottom:1px solid var(--ink);scroll-margin-top:112px}
+.combined-heading{padding-top:55px}
+.combined-heading h2{font-size:clamp(38px,11vw,68px);line-height:.9;letter-spacing:-.06em;margin:14px 0}
+.combined-heading p{max-width:680px;font-size:16px}
+.field-notes-section{background:var(--paper-2)}
+.follow-up-action{margin-top:14px}
+.follow-up-action>button,.follow-up-action form button{min-height:44px;border:1px solid var(--ink);background:transparent;padding:10px 14px;font-weight:900}
+.follow-up-action>button:hover,.follow-up-action form button[type="submit"]{background:var(--ink);color:#fff}
+.follow-up-action form{display:grid;gap:11px;margin-top:10px;padding:15px;border:1px solid var(--ink);background:#fff}
+.follow-up-action form>p{font-size:13px;margin:0;opacity:.72}
+.follow-up-action form label{font-size:11px;font-weight:900;letter-spacing:.08em}
+.follow-up-action form input,.follow-up-action form textarea{width:100%;margin-top:5px;border:1px solid var(--ink);border-radius:0;background:#fff}
+.follow-up-action form textarea{min-height:90px}
+.follow-up-action form>div{display:flex;gap:8px;flex-wrap:wrap}
+.follow-up-status{font-size:13px;font-weight:800;color:#1f6b3a}
+.follow-up-thread{margin-top:12px;padding:15px;border-left:5px solid var(--red);background:#fff}
+.follow-up-thread>small,.follow-up-thread>span{display:block;font-size:11px;font-weight:900;letter-spacing:.08em}
+.follow-up-thread>span{opacity:.62;letter-spacing:0}
+.follow-up-thread>a{display:inline-block;margin-top:14px;font-size:13px;font-weight:900;text-decoration:underline}
+.follow-up-thread aside{margin-left:0}
+.ig-conversation{margin-bottom:70px;padding:24px;background:var(--ink);color:#fff}
+.ig-conversation b{font-size:22px}.ig-conversation p{margin:6px 0 14px;max-width:650px;opacity:.78}.ig-conversation a{font-weight:900;text-decoration:underline}
+
+/* A two-card live snippet keeps the combined journal visible on the homepage. */
+.conversation-preview{padding-block:52px}
+.conversation-preview>header{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:20px}
+.conversation-preview>header h2{font-size:clamp(38px,10vw,62px);line-height:.9;letter-spacing:-.06em;margin:12px 0 0}
+.conversation-preview>header>a{font-weight:900;text-decoration:underline;white-space:nowrap}
+.conversation-preview-grid{display:grid;border-top:1px solid var(--ink);border-left:1px solid var(--ink)}
+.conversation-preview-card{display:flex;min-height:260px;flex-direction:column;padding:22px;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);background:#fff}
+.conversation-preview-card.accent{background:var(--ink);color:#fff}
+.conversation-preview-card small{font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--red-ink)}
+.conversation-preview-card.accent small{color:#ff7255}
+.conversation-preview-card h3{font-size:28px;line-height:1;letter-spacing:-.04em;margin:24px 0 10px}
+.conversation-preview-card p{margin:0 0 22px;white-space:pre-wrap}
+.conversation-preview-card b{margin-top:auto;text-decoration:underline}
+
+.admin-follow-up{margin-top:12px;padding:10px;border-left:4px solid var(--red);background:var(--paper)}
+.admin-follow-up b,.reply-cell label{font-size:10px;font-weight:900;letter-spacing:.08em}
+.admin-follow-up p{margin:4px 0 0}
+.reply-cell label{display:block;margin-bottom:12px}
+.reply-cell textarea{display:block;margin-top:5px}
+
+@media(min-width:700px){
+  .conversation-preview-grid{grid-template-columns:1fr 1fr}
+  .combined-heading{padding-top:75px}
+}
+
+@media(max-width:699px){
+  .conversation-preview>header{align-items:start;flex-direction:column}
+  .conversation-preview-card{min-height:230px}
+}

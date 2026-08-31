@@ -9,13 +9,12 @@ const links = [
   // First, because being asked things is the thing he wants most from this
   // site and it used to be reachable only by scrolling two thirds down the
   // homepage and reading a list.
-  ["Ask Navneet", "/ahead/question"],
+  ["Journal + Ask", "/journal"],
   ["Walk with me", "/ahead/walk"],
   ["Route", "/route"],
   ["About", "/about"],
   ["Partner", "/sponsor"],
   ["Messages", "/messages"],
-  ["Journal", "/journal"],
   ["Pictures", "/gallery"],
   ["Book", "/book"],
   ["Games", "/games"],

@@ -202,6 +202,11 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
   const next = nextStopAfter(stops, progressKm);
   const currentPlace = place ? [place.name, place.state].filter(Boolean).join(", ") : previous.currentPlace;
 
+  const phoneTime = last.at ? new Date(last.at) : null;
+  const phoneUpdatedAt = phoneTime && Number.isFinite(phoneTime.getTime()) && phoneTime.getTime() <= Date.now() + 5 * 60000
+    ? phoneTime.toISOString()
+    : new Date().toISOString();
+
   const nextJourney = {
     ...previous,
     id: 1,
@@ -216,7 +221,10 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
     // The walk announces itself on the morning of the start date rather than
     // waiting for somebody to remember a dropdown.
     ...(becomesLive ? { mode: "live" as const } : {}),
-    updatedAt: new Date().toISOString(),
+    // This is the time of the GPS fix, not the time a delayed batch happened
+    // to reach the server. The age shown on the site therefore describes the
+    // evidence itself.
+    updatedAt: phoneUpdatedAt,
   };
 
   await db.insert(journey).values(nextJourney).onConflictDoUpdate({ target: journey.id, set: nextJourney });

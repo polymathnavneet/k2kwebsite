@@ -5,13 +5,13 @@ import { Dashboard } from "@/components/dashboard";
 import proposal from "@/data/proposal.json";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { ResponsePanel } from "@/components/response-panel";
+import { HomeConversationPreview } from "@/components/home-conversation-preview";
 
 const doors = [
-  ["01", "Ask Navneet", "Anything. He answers himself", "/ahead/question"],
+  ["01", "Journal + Ask", "Read the road, ask Navneet, see his replies", "/journal#ask"],
   ["02", "Walk with me", "A kilometre or a week", "/ahead/walk"],
-  ["03", "Suggest a place", "A road, meal or local secret", "/ahead/place"],
-  ["04", "Share a story", "A person worth meeting", "/ahead/story"],
-  ["05", "Offer support", "Water, power, food or stay", "/ahead/support"],
+  ["03", "Road tips & help", "Places, stories, food, routes or support", "/ahead/road"],
 ];
 
 export default function Home() {
@@ -19,7 +19,6 @@ export default function Home() {
     <main>
       <SiteHeader />
       <Dashboard />
-      <ContentBlock slot="home-note" className="shell note-slot" />
 
       {/* Above the sponsorship call and above the proof, because the thing he
           wants most from this website is not money - it is people. Both doors
@@ -33,7 +32,7 @@ export default function Home() {
             <p>Four thousand two hundred and seventy kilometres is a long time to be alone with your own opinions. Ask me something, or come and walk a piece of it with me — both go straight to my phone, and I reply to every one myself.</p>
           </div>
           <div className="talk-doors">
-            <Link className="talk-door" href="/ahead/question">
+            <Link className="talk-door" href="/journal#ask">
               <b>ASK NAVNEET</b>
               <strong>Ask me anything.</strong>
               <span>Why I am doing this, what it costs, what I am afraid of — or what to eat in your town. Answered by me, usually within a few days.</span>
@@ -48,6 +47,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <HomeConversationPreview />
+      <ResponsePanel />
+      <ContentBlock slot="home-note" className="shell note-slot" />
 
       <Countdown />
 
@@ -101,7 +104,7 @@ export default function Home() {
         </div>
       </section>
       <SiteFooter />
-      <nav className="mobile-dock"><Link href="/">Home</Link><Link href="/route">Route</Link><Link href="/ahead/question">Ask</Link><Link href="/messages">Messages</Link><Link className="dock-sponsor" href="/sponsor">Sponsor</Link></nav>
+      <nav className="mobile-dock"><Link href="/">Home</Link><Link href="/route">Route</Link><Link href="/journal#ask">Ask</Link><Link href="/messages">Messages</Link><Link className="dock-sponsor" href="/sponsor">Sponsor</Link></nav>
     </main>
   );
 }

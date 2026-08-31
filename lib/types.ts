@@ -49,8 +49,13 @@ export type PublicMessage = {
   message: string;
   status: string;
   reply: string;
+  followUp: string;
+  followUpReply: string;
   createdAt: string;
   repliedAt?: string | null;
+  followUpAt?: string | null;
+  followUpRepliedAt?: string | null;
+  canFollowUp?: boolean;
   contact?: string;
 };
 

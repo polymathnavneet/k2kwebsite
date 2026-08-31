@@ -10,8 +10,12 @@ export const messages = sqliteTable("messages", {
   contact: text("contact").notNull(),
   status: text("status").notNull().default("public"),
   reply: text("reply").notNull().default(""),
+  followUp: text("follow_up").notNull().default(""),
+  followUpReply: text("follow_up_reply").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   repliedAt: text("replied_at"),
+  followUpAt: text("follow_up_at"),
+  followUpRepliedAt: text("follow_up_replied_at"),
 });
 
 export const bookRegistrations = sqliteTable(

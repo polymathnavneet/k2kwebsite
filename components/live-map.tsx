@@ -81,7 +81,7 @@ function loadLeaflet(): Promise<Leaflet | null> {
 const escapeHtml = (value: string) =>
   String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export function LiveMap({ stops, journey, compact = false }: { stops: RouteStop[]; journey: Journey; compact?: boolean }) {
+export function LiveMap({ stops, journey, compact = false, active = false }: { stops: RouteStop[]; journey: Journey; compact?: boolean; active?: boolean }) {
   const holder = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<{ addTo: (map: unknown) => void; clearLayers: () => void } | null>(null);
@@ -159,7 +159,7 @@ export function LiveMap({ stops, journey, compact = false }: { stops: RouteStop[
     if (!usable.length) return;
 
     const along = journey.routeProgressKm ?? journey.distanceTotal ?? 0;
-    const live = journey.mode === "live";
+    const live = active;
     const line = usable.map(stop => [stop.lat, stop.lon] as [number, number]);
 
     // The whole planned route, dashed.
@@ -217,9 +217,9 @@ export function LiveMap({ stops, journey, compact = false }: { stops: RouteStop[
     // The hero's height settles a frame or two later on a phone.
     const settle = setTimeout(() => { if (!touchedRef.current) frame(); }, 200);
     return () => clearTimeout(settle);
-  }, [ready, stops, journey]);
+  }, [ready, stops, journey, active]);
 
-  if (failed) return <RouteMap stops={stops} journey={journey} compact={compact} />;
+  if (failed) return <RouteMap stops={stops} journey={journey} compact={compact} active={active} />;
 
   // Any of these means the reader is working the map on purpose, so it must
   // stop re-framing itself from under them.
