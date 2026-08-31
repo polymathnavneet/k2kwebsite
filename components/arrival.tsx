@@ -51,7 +51,12 @@ export function Arrival() {
     startDate: route.startDate,
   });
 
-  const nextName = ahead?.next.name ?? route.stops.at(-1)?.name ?? "Srinagar";
+  // Before there is a position to project from - and on the server's first
+  // render, where the journey is still the stock row - the next town he reaches
+  // is the *first* stop, not the last. Falling back to the end of the route put
+  // "Srinagar" under a heading reading NEXT TOWN, directly above its own
+  // subtitle saying the route begins at Kanyakumari.
+  const nextName = ahead?.next.name ?? route.stops[0]?.name ?? "Kanyakumari";
   const pretty = (dayKey: string) => formatWalkDate(istNoon(dayKey));
 
   // Before the first step there is no performance to read, and saying "not
