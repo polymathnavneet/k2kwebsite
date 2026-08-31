@@ -1,6 +1,57 @@
+import { eq } from "drizzle-orm";
+import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
+import { routeConfig } from "@/db/schema";
+import { defaultRoute } from "@/lib/defaults";
 import { isAdmin, isTracker } from "@/lib/server";
-import { processPoints } from "@/lib/tracking";
+import { processPoints, walkOpensAt } from "@/lib/tracking";
+import type { GpsTrailPoint } from "@/lib/types";
+
+const MAX_PUBLIC_TRAIL_POINTS = 1800;
+
+/**
+ * GET /api/gps -> the public evidence trail.
+ *
+ * This is deliberately not the planned route. It contains only GPS fixes that
+ * counted as walked after the expedition start. The database may eventually
+ * hold tens of thousands of fixes, so the query samples them evenly while
+ * always keeping the first and latest point. The shape of the road survives;
+ * the browser does not need to download a phone's entire location history.
+ */
+export async function GET() {
+  const db = getDb();
+  const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
+  const from = walkOpensAt(config?.startDate ?? defaultRoute.startDate);
+  const runtime = env as unknown as { DB: D1Database };
+  const query = `
+    WITH walked AS (
+      SELECT recorded_at AS recordedAt, lat, lon, counted_km AS countedKm
+      FROM gps_points
+      WHERE counted = 1 AND recorded_at >= ?
+    ), numbered AS (
+      SELECT recordedAt, lat, lon, countedKm,
+             ROW_NUMBER() OVER (ORDER BY recordedAt) AS rn,
+             COUNT(*) OVER () AS total
+      FROM walked
+    )
+    SELECT recordedAt, lat, lon, countedKm
+    FROM numbered
+    WHERE total <= ${MAX_PUBLIC_TRAIL_POINTS}
+       OR rn = 1
+       OR rn = total
+       OR rn % CASE
+            WHEN total > ${MAX_PUBLIC_TRAIL_POINTS}
+              THEN CAST((total + ${MAX_PUBLIC_TRAIL_POINTS - 1}) / ${MAX_PUBLIC_TRAIL_POINTS} AS INTEGER)
+            ELSE 1
+          END = 0
+    ORDER BY recordedAt
+  `;
+  const result = await runtime.DB.prepare(query).bind(from).all<GpsTrailPoint>();
+  return Response.json(
+    { points: result.results ?? [] },
+    { headers: { "cache-control": "no-store, max-age=0" } }
+  );
+}
 
 /**
  * POST /api/gps -> sync one GPS fix.
