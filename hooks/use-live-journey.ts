@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { defaultJourney, defaultRoute } from "@/lib/defaults";
-import type { Journey, WalkRoute } from "@/lib/types";
+import type { GpsTrailPoint, Journey, WalkRoute } from "@/lib/types";
 
 /**
  * One source of live state for every public page.
@@ -19,16 +19,22 @@ const REFRESH_MS = 45000;
 export function useLiveJourney() {
   const [journey, setJourney] = useState<Journey>(defaultJourney);
   const [route, setRoute] = useState<WalkRoute>(defaultRoute);
+  const [trail, setTrail] = useState<GpsTrailPoint[]>([]);
   const [updatedAt, setUpdatedAt] = useState<number>(0);
 
   const refresh = useCallback(async () => {
     try {
-      const [journeyResponse, routeResponse] = await Promise.all([
+      const [journeyResponse, routeResponse, trailResponse] = await Promise.all([
         fetch("/api/journey", { cache: "no-store" }),
         fetch("/api/route", { cache: "no-store" }),
+        fetch("/api/gps", { cache: "no-store" }),
       ]);
       if (journeyResponse.ok) setJourney(await journeyResponse.json());
       if (routeResponse.ok) setRoute(await routeResponse.json());
+      if (trailResponse.ok) {
+        const data = await trailResponse.json() as { points?: GpsTrailPoint[] };
+        setTrail(Array.isArray(data.points) ? data.points : []);
+      }
       setUpdatedAt(Date.now());
     } catch {
       // Offline: keep showing the last good state rather than blanking the page.
@@ -52,5 +58,5 @@ export function useLiveJourney() {
     };
   }, [refresh]);
 
-  return { journey, route, refresh, updatedAt };
+  return { journey, route, trail, refresh, updatedAt };
 }
