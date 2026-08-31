@@ -188,3 +188,17 @@ export const timelineSteps = sqliteTable("timeline_steps", {
   sortOrder: integer("sort_order").notNull().default(0),
   isFinal: integer("is_final").notNull().default(0),
 });
+
+/** Which Google sheet and document run the site, and how the last read went. */
+export const siteSettings = sqliteTable("site_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+/** Prose the Google document puts on the pages, one row per named slot. */
+export const contentBlocks = sqliteTable("content_blocks", {
+  slot: text("slot").primaryKey(),
+  body: text("body").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

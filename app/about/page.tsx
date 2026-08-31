@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { ContentBlock } from "@/components/content-block";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import proposal from "@/data/proposal.json";
@@ -22,6 +23,8 @@ export default function AboutPage() {
       <p>{person.age} years old, from {person.from}, currently living in {person.living}. {person.studying}. A writer first — {person.books} books written and published, and the fourth will be about this walk.</p>
       <p>{person.halfMarathons}. He has not walked 4,000 km before — nobody his age has, which is the point. Between now and the start he is training publicly and posting the log, so that anyone considering funding this can watch the preparation rather than take his word for it.</p>
     </section>
+
+    <ContentBlock slot="about-extra" className="shell note-slot" />
 
     <section className="record-block shell">
       <div className="section-tag warm">THE RECORD</div>

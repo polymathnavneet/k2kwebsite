@@ -38,6 +38,12 @@ if (workerName) {
 config.d1_databases = [{ binding: "DB", database_name: databaseName, database_id: databaseId }];
 config.workers_dev = true;
 
+// Wake the worker every quarter of an hour to read the Google sheet and
+// document. This is what makes them the site's controls rather than a copy of
+// it: a change typed on a phone reaches the pages without anybody pressing
+// anything, or being awake.
+config.triggers = { crons: ["*/15 * * * *"] };
+
 await writeFile(built, `${JSON.stringify(config, null, 2)}\n`);
 
 // A second, tiny config used only to run the migrations. Wrangler resolves
