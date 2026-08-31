@@ -7,6 +7,7 @@ import { calendarPace, livePace } from "@/lib/geo";
 import { predictNext } from "@/lib/position";
 import { formatWalkDate, istNoon, walkDay } from "@/lib/time";
 import { LiveMap } from "./live-map";
+import { RightNow } from "./right-now";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 const formatIso = (date: Date) => new Date(date.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -123,11 +124,11 @@ export function Dashboard() {
           "Awaiting data" and "—" beside figures that were real. */}
       <section className="field-grid shell">
         <article className="dispatch-card"><div className="section-tag">01 · LATEST FIELD SIGNAL</div><div><small>{journey.currentPlace.toUpperCase()}</small><h2>{journey.latestTitle}</h2><p>{journey.latestText}</p><a href={journey.latestUrl}>Read the dispatch →</a></div></article>
-        <aside className="field-card"><div className="section-tag">02 · TODAY IN THE FIELD</div><dl><div><dt>Walking</dt><dd>{journey.walkingMinutes} min</dd></div><div><dt>Phone</dt><dd>{journey.battery == null ? "—" : `${journey.battery}%`}</dd></div><div><dt>Partner</dt><dd>{journey.sponsorName}</dd></div></dl></aside>
+        <RightNow />
       </section>
 
       <section className="response-panel shell">
-        <div><div className="section-tag">03 · SEND A SIGNAL</div><h2>Respond to the road.</h2><p>Navneet sees the day&apos;s cheers on his phone at the end of the walking. Weak-signal taps stay acknowledged here and send themselves later.</p></div>
+        <div><div className="section-tag">02 · SEND A SIGNAL</div><h2>Respond to the road.</h2><p>Navneet sees the day&apos;s cheers on his phone at the end of the walking. Weak-signal taps stay acknowledged here and send themselves later.</p></div>
         <div className="response-buttons">
           <button onClick={() => react("cheer")}><Check size={18} /> Cheer today{cheers && cheers.cheer > 0 ? <b className="tally">{number.format(cheers.cheer)}</b> : null}</button>
           <button onClick={() => react("follow")}>＋ Follow A Long Walk</button>
