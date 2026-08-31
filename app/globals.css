@@ -52,6 +52,11 @@
 .closing-block .road-form .primary-button{background:var(--cream);color:#b73924;border-color:var(--cream)}
 .closing-block .form-status{color:var(--cream);opacity:.85}
 
+.note-slot{padding-block:26px;border-bottom:1px solid var(--ink)}
+.note-slot p{margin:0 0 12px;font-size:16px;line-height:1.6;max-width:720px}
+.note-slot p:last-child{margin-bottom:0}
+.note-slot p:first-child{font-weight:700}
+
 /* ---- The countdown to the first step ----------------------------------- */
 .countdown-strip{background:var(--paper);padding:52px 0;border-bottom:1px solid var(--ink)}
 .countdown-strip h2{font-size:clamp(32px,9vw,54px);line-height:.92;letter-spacing:-.05em;margin:10px 0 12px}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ContentBlock } from "@/components/content-block";
 import { SponsorForm } from "@/components/sponsor-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -23,6 +24,8 @@ export default function SponsorPage() {
       <p className="hero-ask">Title partner ₹2,00,000 · four supporting slots at ₹50,000 · gear partnerships in kind · minimum participation ₹10,000.</p>
       <a className="primary-button" href="#talk">Start a conversation ↓</a>
     </section>
+
+    <ContentBlock slot="sponsor-note" className="shell note-slot" />
 
     <section className="compare-grid shell">
       <div className="section-tag warm">01 · THE SHORT VERSION</div>

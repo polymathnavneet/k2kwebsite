@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContentBlock } from "@/components/content-block";
 import { Countdown } from "@/components/countdown";
 import { Dashboard } from "@/components/dashboard";
 import proposal from "@/data/proposal.json";
@@ -17,6 +18,8 @@ export default function Home() {
     <main>
       <SiteHeader />
       <Dashboard />
+      <ContentBlock slot="home-note" className="shell note-slot" />
+
       <Countdown />
 
       {/* High enough that a brand does not have to read to the bottom of the

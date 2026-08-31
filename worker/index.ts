@@ -26,6 +26,23 @@ interface ExecutionContext {
 // const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
 
 const worker = {
+  /**
+   * Cloudflare wakes this on a schedule, with no browser and nobody watching.
+   *
+   * That is what makes the Google sheet and document actually run the site: a
+   * change typed on a phone in a village reaches the pages within a quarter of
+   * an hour, whether or not Navneet, or anyone else, opens anything.
+   *
+   * It is imported here rather than at the top of the file so that a fetch
+   * never pays for code only the timer uses.
+   */
+  async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil((async () => {
+      const { runScheduledPull } = await import("../lib/scheduled");
+      await runScheduledPull(env as unknown as { DB: D1Database });
+    })());
+  },
+
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
