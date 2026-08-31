@@ -94,5 +94,14 @@ export async function POST(request: Request) {
   if (existing) await db.update(journalEntries).set(row).where(eq(journalEntries.id, existing.id));
   else await db.insert(journalEntries).values(row);
 
+  // The card on the homepage used to be two boxes in the admin panel that had
+  // to be kept in step with the journal by hand, and so never were. It is the
+  // newest entry now: written once, in one place.
+  await db.update(journey).set({
+    latestTitle: row.place ? `${row.place}` : "From the road",
+    latestText: row.body.length > 400 ? `${row.body.slice(0, 397)}…` : row.body,
+    latestUrl: "/journal",
+  }).where(eq(journey.id, 1));
+
   return Response.json({ ok: true, entry: row, replaced: Boolean(existing) }, { status: existing ? 200 : 201 });
 }

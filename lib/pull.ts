@@ -148,6 +148,15 @@ async function pullJournal(db: Db, report: PullReport) {
     createdAt: new Date().toISOString(),
   }))).onConflictDoNothing();
 
+  // Keep the homepage card on the newest of them, exactly as publishing
+  // through the site does.
+  const newest = fresh.reduce((latest, entry) => String(entry.day) > String(latest.day) ? entry : latest, fresh[0]);
+  await db.update(journey).set({
+    latestTitle: clean(newest.place, 100) || current?.currentPlace || "From the road",
+    latestText: String(newest.body).trim().slice(0, 400),
+    latestUrl: "/journal",
+  }).where(eq(journey.id, 1));
+
   report.applied.push(`Journal from GitHub: ${fresh.map(entry => entry.day).join(", ")}`);
 }
 
