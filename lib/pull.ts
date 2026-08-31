@@ -3,6 +3,7 @@ import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
 import { contentBlocks, journalEntries, journey, routeConfig, siteSettings, timelineSteps } from "@/db/schema";
 import { readData } from "@/lib/github";
+import { reconcile } from "@/lib/tracking";
 import { fileId, parseCsv, parseSections, readDoc, readSheet } from "@/lib/google";
 import { clean } from "@/lib/server";
 
@@ -73,7 +74,17 @@ export async function saveSetting(db: Db, key: string, value: string) {
 export async function pull(db: Db): Promise<PullReport> {
   const report: PullReport = { applied: [], ignored: [], problems: [], at: new Date().toISOString() };
 
-  // The repository first, and always. It needs no setting up and no key: the
+  // The published figures first, so that a day on which he sends nothing still
+  // rolls "today" over at Indian midnight, and any drift in the total is
+  // repaired without waiting for him to walk somewhere.
+  try {
+    const fixed = await reconcile(db);
+    if (fixed) report.applied.push(`Distance recounted from the GPS: ${fixed.distanceTotal} km total, ${fixed.distanceToday} km today`);
+  } catch {
+    report.problems.push("Could not recount the distance from the recorded positions.");
+  }
+
+  // The repository next, and always. It needs no setting up and no key: the
   // repository is public, so the file is simply read. That is what lets ChatGPT
   // publish a journal entry with nothing but the GitHub access it already has -
   // commit the file, and the site picks it up on the next quarter hour.
