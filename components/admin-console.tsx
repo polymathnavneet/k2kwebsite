@@ -56,11 +56,7 @@ export function AdminConsole() {
   const [edits, setEdits] = useState<Record<string, { name: string; km: string }>>({});
   const [gallery, setGallery] = useState<MediaItem[]>([]);
   const [newMedia, setNewMedia] = useState({ url: "", caption: "", place: "" });
-  const [today, setToday] = useState<{ day: string; question: string; answered: boolean; taps: { group: string; options: string[] }[] } | null>(null);
-  const [picked, setPicked] = useState<string[]>([]);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [daysSince, setDaysSince] = useState<number | null>(null);
-  const [answer, setAnswer] = useState("");
   const [mind, setMind] = useState("");
   const [askMind, setAskMind] = useState<{ place: string; reason: string } | null>(null);
 
@@ -87,14 +83,8 @@ export function AdminConsole() {
       setPlan(runUp.steps || []);
       const shots = await fetch("/api/media").then(response => response.json()).catch(() => ({ rows: [] }));
       setGallery(shots.rows || []);
-      const diary = await request<{ rows: JournalEntry[]; today: { day: string; question: string; answered: boolean; taps: { group: string; options: string[] }[] }; daysSince: number | null }>("/api/journal?admin=1").catch(() => null);
-      if (diary) {
-        setEntries(diary.rows || []);
-        setToday(diary.today);
-        setDaysSince(diary.daysSince);
-        const already = (diary.rows || []).find(row => row.day === diary.today.day);
-        setAnswer(already?.body ?? "");
-      }
+      const diary = await request<{ rows: JournalEntry[] }>("/api/journal?admin=1").catch(() => null);
+      if (diary) setEntries(diary.rows || []);
       setJourney(journeyData); setRoute(routeData); setMessages(messageData.rows); setBooks(bookData.rows);
       // Keep whatever is already typed; only fill in boxes that are untouched,
       // so a reload never throws away a half-written reply.
@@ -177,20 +167,6 @@ export function AdminConsole() {
     finally { setBusyRow(""); }
   }
 
-  async function saveToday() {
-    if (!picked.length && answer.trim().length < 3) return say("Tap at least one thing, or write a line.");
-    say("Publishing…");
-    try {
-      const result = await request<{ replaced: boolean }>("/api/journal", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "answer", body: [picked.join(" · "), answer.trim()].filter(Boolean).join(" — "), question: today?.question, day: today?.day }),
-      });
-      setToday(current => current && { ...current, answered: true });
-      setDaysSince(0);
-      say(result.replaced ? "Today's entry updated. It is live on the journal." : "Published to the journal.");
-    } catch (error) { say(error instanceof Error ? error.message : "Could not publish"); }
-  }
 
   // A one-line thought, published where you stood when you thought it.
   async function saveMind() {
@@ -204,8 +180,6 @@ export function AdminConsole() {
       });
       setAskMind(null);
       setMind("");
-      setDaysSince(0);
-      setToday(current => current && { ...current, answered: true });
       say("Published to the journal.");
     } catch (error) { say(error instanceof Error ? error.message : "Could not publish"); }
   }
@@ -347,46 +321,6 @@ export function AdminConsole() {
   return <section className="admin-app">
     {flash && <div className="admin-flash" role="status" onClick={() => setFlash("")}>{flash}</div>}
     <div className="admin-bar"><div><b>A LONG WALK</b><span>{status}</span></div><Button variant="outline" onClick={loadAll}><RefreshCw /> Refresh</Button><Button variant="outline" onClick={pullFromGithub}><CloudDownload /> Pull edits from GitHub</Button><Button variant="outline" onClick={() => { localStorage.removeItem("alw-admin-token"); setConnected(false); setToken(""); }}>Change passcode</Button></div>
-    {today && <section className={today.answered ? "today-card done" : "today-card"}>
-      <div className="today-head">
-        <b>{today.answered ? "Today, done" : "Today"}</b>
-        <span>{daysSince !== null && daysSince > 1 && !today.answered ? `${daysSince} days since the last entry` : today.day}</span>
-      </div>
-      <p className="today-q">{today.question}</p>
-
-      <div className="taps">
-        {today.taps.map(group => <div className="tap-group" key={group.group}>
-          <small>{group.group}</small>
-          <div>
-            {group.options.map(option => {
-              const on = picked.includes(option);
-              return <button
-                type="button"
-                key={option}
-                className={on ? "tap on" : "tap"}
-                aria-pressed={on}
-                onClick={() => setPicked(current => on ? current.filter(item => item !== option) : [...current, option])}
-              >{option}</button>;
-            })}
-          </div>
-        </div>)}
-      </div>
-
-      {picked.length > 0 && <p className="tap-preview">{picked.join(" · ")}</p>}
-
-      <details className="today-more">
-        <summary>Add a line of your own {picked.length ? "(optional)" : ""}</summary>
-        <Textarea value={answer} onChange={event => setAnswer(event.target.value)} placeholder="Only if you want to. The taps above are enough." />
-      </details>
-
-      <div className="today-actions">
-        <Button onClick={saveToday} disabled={!picked.length && answer.trim().length < 3}>
-          {today.answered ? "Update today" : `Publish${picked.length ? ` ${picked.length} thing${picked.length === 1 ? "" : "s"}` : ""}`}
-        </Button>
-        <Button variant="outline" onClick={syncGps}><LocateFixed /> Where am I?</Button>
-      </div>
-      <p className="today-where">Showing you at <b>{journey.currentPlace || "nowhere yet"}</b>. Tap <b>Where am I?</b> to set it from this phone&apos;s GPS.</p>
-    </section>}
     <Assistant token={token.trim()} />
 {askMind && <section className="mind-card">
       <div className="mind-head"><b>You are in {askMind.place}</b><button type="button" aria-label="Not now" onClick={() => setAskMind(null)}>✕</button></div>
