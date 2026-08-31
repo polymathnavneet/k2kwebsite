@@ -93,6 +93,7 @@ export function LiveMap({ stops, journey, compact = false, active = false }: { s
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
   const [engaged, setEngaged] = useState(false);
+  const [hinted, setHinted] = useState(false);
 
   // Create the map once.
   useEffect(() => {
@@ -128,17 +129,21 @@ export function LiveMap({ stops, journey, compact = false, active = false }: { s
     // on a phone the address bar slides on every scroll, and re-framing then
     // would snatch back a zoom made a second earlier.
     const holderNow = holder.current;
-    const touched = () => { touchedRef.current = true; };
+    const touched = () => { touchedRef.current = true; setHinted(true); };
     holderNow?.addEventListener("pointerdown", touched, { passive: true });
     holderNow?.addEventListener("wheel", touched, { passive: true });
+    holderNow?.addEventListener("touchstart", touched, { passive: true });
 
     const observer = holderNow && typeof ResizeObserver !== "undefined"
       ? new ResizeObserver(() => { if (!touchedRef.current) frameRef.current?.(); })
       : null;
     if (observer && holderNow) observer.observe(holderNow);
 
+    const giveUp = setTimeout(() => setHinted(true), 9000);
+
     return () => {
       cancelled = true;
+      clearTimeout(giveUp);
       observer?.disconnect();
       holderNow?.removeEventListener("pointerdown", touched);
       holderNow?.removeEventListener("wheel", touched);
@@ -223,7 +228,7 @@ export function LiveMap({ stops, journey, compact = false, active = false }: { s
 
   // Any of these means the reader is working the map on purpose, so it must
   // stop re-framing itself from under them.
-  const hold = () => { touchedRef.current = true; };
+  const hold = () => { touchedRef.current = true; setHinted(true); };
 
   // Hand the map over. Until this, a swipe scrolls the page like any other part
   // of it; afterwards the map is the reader's to drag.
@@ -257,6 +262,24 @@ export function LiveMap({ stops, journey, compact = false, active = false }: { s
           aria-label="Centre on Navneet"
           onClick={() => { hold(); mapRef.current?.setView([journey.lat, journey.lon], 11); }}
         >⌖</button>
+        {/* Nobody knows a map can be zoomed unless it says so, and the two
+            devices are zoomed differently: two fingers on a phone, these
+            buttons on a laptop, where the wheel is deliberately left alone so
+            the page can still be scrolled past the map. Which line shows is
+            decided in CSS by pointer type rather than by sniffing the browser
+            here, so the server and the client render the same markup.
+
+            It lives inside this column rather than floating in a corner of its
+            own: pinned bottom-left it sat under the homepage headline, and on
+            the route page - where the map is taller than a phone - it measured
+            out below the fold entirely. Here it cannot collide with the
+            buttons or fall off the screen at any width. */}
+        {!hinted && (
+          <p className="map-hint" aria-hidden="true">
+            <span className="on-touch">Pinch to zoom</span>
+            <span className="on-pointer">Use + and −</span>
+          </p>
+        )}
       </div>
     </div>
   );
