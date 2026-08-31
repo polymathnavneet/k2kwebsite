@@ -3,21 +3,14 @@ import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import { routeConfig } from "@/db/schema";
 import { defaultRoute } from "@/lib/defaults";
+import { recordGpsPlace } from "@/lib/gps-places";
 import { isAdmin, isTracker } from "@/lib/server";
 import { processPoints, walkOpensAt } from "@/lib/tracking";
-import type { GpsTrailPoint } from "@/lib/types";
+import type { GpsTrailPlace, GpsTrailPoint } from "@/lib/types";
 
 const MAX_PUBLIC_TRAIL_POINTS = 1800;
 
-/**
- * GET /api/gps -> the public evidence trail.
- *
- * This is deliberately not the planned route. It contains only GPS fixes that
- * counted as walked after the expedition start. The database may eventually
- * hold tens of thousands of fixes, so the query samples them evenly while
- * always keeping the first and latest point. The shape of the road survives;
- * the browser does not need to download a phone's entire location history.
- */
+/** Public evidence only: the line walked, plus named places the GPS reached. */
 export async function GET() {
   const db = getDb();
   const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
@@ -46,20 +39,28 @@ export async function GET() {
           END = 0
     ORDER BY recordedAt
   `;
-  const result = await runtime.DB.prepare(query).bind(from).all<GpsTrailPoint>();
+
+  const [trailResult, placesResult] = await Promise.all([
+    runtime.DB.prepare(query).bind(from).all<GpsTrailPoint>(),
+    runtime.DB.prepare(`
+      SELECT name, state, lat, lon,
+             first_seen AS firstSeen,
+             last_seen AS lastSeen,
+             sightings,
+             distance_km AS distanceKm
+      FROM gps_places
+      WHERE first_seen >= ?
+      ORDER BY first_seen ASC
+      LIMIT 1000
+    `).bind(from).all<GpsTrailPlace>(),
+  ]);
+
   return Response.json(
-    { points: result.results ?? [] },
+    { points: trailResult.results ?? [], places: placesResult.results ?? [] },
     { headers: { "cache-control": "no-store, max-age=0" } }
   );
 }
 
-/**
- * POST /api/gps -> sync one GPS fix.
- *
- * Everything that follows from a position is worked out server-side: the
- * distance walked, where that sits along the route, which stops have been
- * passed, and whether the route now looks wrong. See lib/tracking.ts.
- */
 export async function POST(request: Request) {
   if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -76,12 +77,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "That does not look like a valid position." }, { status: 400 });
   }
 
-  // GPS deliberately does not mirror to GitHub. Continuous tracking would
-  // mean a commit every fix - thousands a week, and straight into GitHub's
-  // rate limits. The journey is mirrored when it is published from the
-  // admin panel instead, which is when it is worth recording.
   const db = getDb();
   const result = await processPoints(db, [{ lat, lon }]);
+  await recordGpsPlace({
+    place: result.place,
+    lat,
+    lon,
+    distanceKm: Number(result.journey.distanceTotal ?? 0),
+    recordedAt: String(result.journey.updatedAt ?? ""),
+    live: result.journey.mode === "live",
+  });
 
   return Response.json({ ok: true, ...result });
 }
