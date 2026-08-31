@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, CloudDownload, Download, LocateFixed, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowUp, CloudDownload, Download, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,6 +85,13 @@ export function AdminConsole() {
       const diary = await request<{ rows: JournalEntry[] }>("/api/journal?admin=1").catch(() => null);
       if (diary) setEntries(diary.rows || []);
       setJourney(journeyData); setRoute(routeData); setMessages(messageData.rows); setBooks(bookData.rows);
+
+      // The phone moved him somewhere new since he last looked. That, rather
+      // than a button he no longer presses, is the moment worth asking about.
+      const here = String(journeyData.currentPlace || "").trim();
+      const seen = localStorage.getItem("alw-last-place") ?? "";
+      if (here && seen && here !== seen) setAskMind({ place: here, reason: `Your phone says you are in ${here}.` });
+      if (here) localStorage.setItem("alw-last-place", here);
       // Keep whatever is already typed; only fill in boxes that are untouched,
       // so a reload never throws away a half-written reply.
       setReplies(current => Object.fromEntries(messageData.rows.map(row =>
@@ -104,29 +110,6 @@ export function AdminConsole() {
     fetch("/api/sync").then(response => response.json()).then(data => setMirrorsBack(Boolean(data.canWrite))).catch(() => {});
   }, []);
 
-  // Sync a GPS fix. The server measures it against the last one and moves the
-  // distance walked by itself, so every arrival date recalculates.
-  function syncGps() {
-    if (!navigator.geolocation) return say("GPS is unavailable on this device.");
-    say("Finding your location…");
-    navigator.geolocation.getCurrentPosition(async position => {
-      try {
-        const result = await request<{ reason: string; journey: Journey; suggestion: RouteSuggestion | null }>("/api/gps", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }),
-        });
-        setJourney(result.journey);
-        say(result.reason);
-        // The phone is already in your hand and you have just looked at it.
-        // That is the moment a question actually gets answered.
-        setAskMind({ place: result.journey.currentPlace || "here", reason: result.reason });
-        setMind("");
-        // A new place found on the road becomes a question, not a silent edit.
-        if (result.suggestion) setSuggestions(current => [result.suggestion as RouteSuggestion, ...current]);
-      } catch (error) { say(error instanceof Error ? error.message : "Could not sync GPS"); }
-    }, error => say(error.message), { enableHighAccuracy: true, timeout: 15000 });
-  }
 
   // Pull hand-edited data/*.json out of the repository and make it live.
   async function pullFromGithub() {
@@ -347,9 +330,9 @@ export function AdminConsole() {
         </div>
       </article>)}
     </section>}
-    <TabsContent value="journey" className="admin-panel"><div className="admin-heading"><div><h2>Quick journey update</h2><p>Only the essentials are above the fold on your phone.</p></div><Button onClick={saveJourney}>Publish update</Button></div>
+    <TabsContent value="journey" className="admin-panel"><div className="admin-heading"><div><h2>The walk right now</h2><p>Everything here comes from your phone. The only boxes left are the things it cannot know.</p></div><Button onClick={saveJourney}>Publish update</Button></div>
         <div className="progress-strip"><div><small>ALONG THE ROUTE</small><strong>{Math.round(journey.routeProgressKm ?? 0).toLocaleString("en-IN")} km</strong></div><div><small>WALKED</small><strong>{Math.round(journey.distanceTotal).toLocaleString("en-IN")} km</strong></div><div><small>OFF THE LINE</small><strong className={(journey.offRouteKm ?? 0) > 12 ? "off" : ""}>{Math.round(journey.offRouteKm ?? 0)} km</strong></div><div><small>NEXT STOP</small><strong>{route.stops.find(stop => stop.km > (journey.routeProgressKm ?? 0))?.name ?? "Finished"}</strong></div></div><div className="status-presets">{["Walking", "Resting", "Eating", "Sleeping", "Filming", "Need help"].map(value => <button className={journey.status === value ? "active" : ""} key={value} onClick={() => setJourney(current => ({ ...current, status: value }))}>{value}</button>)}</div>
-        <div className="admin-form-grid"><label>MODE<NativeSelect value={journey.mode} onChange={event => setJourney(value => ({ ...value, mode: event.target.value as Journey["mode"] }))}><NativeSelectOption value="preparation">Preparation</NativeSelectOption><NativeSelectOption value="live">Live walk</NativeSelectOption></NativeSelect></label><label>DAY<Input type="number" value={journey.day} onChange={event => setJourney(value => ({ ...value, day: Number(event.target.value) }))} /></label><label>DISTANCE TODAY (KM)<Input type="number" step=".1" value={journey.distanceToday} onChange={event => setJourney(value => ({ ...value, distanceToday: Number(event.target.value) }))} /></label><label>TOTAL DISTANCE (KM)<Input type="number" step=".1" value={journey.distanceTotal} onChange={event => setJourney(value => ({ ...value, distanceTotal: Number(event.target.value) }))} /></label><label className="wide">CURRENT PLACE<Input value={journey.currentPlace} onChange={event => setJourney(value => ({ ...value, currentPlace: event.target.value }))} /></label><Button className="wide" variant="outline" onClick={syncGps}><LocateFixed /> Sync GPS &amp; add distance</Button><label>STEPS<Input type="number" value={journey.stepsToday} onChange={event => setJourney(value => ({ ...value, stepsToday: Number(event.target.value) }))} /></label><label>WALKING MINUTES<Input type="number" value={journey.walkingMinutes} onChange={event => setJourney(value => ({ ...value, walkingMinutes: Number(event.target.value) }))} /></label><label>WEATHER °C<Input type="number" value={journey.temperature ?? ""} onChange={event => setJourney(value => ({ ...value, temperature: event.target.value ? Number(event.target.value) : null }))} /></label><label>BATTERY %<Input type="number" value={journey.battery ?? ""} onChange={event => setJourney(value => ({ ...value, battery: event.target.value ? Number(event.target.value) : null }))} /></label><label>CONNECTION<Input value={journey.connectivity} onChange={event => setJourney(value => ({ ...value, connectivity: event.target.value }))} /></label><label>LAST SLEPT<Input value={journey.lastSleep} onChange={event => setJourney(value => ({ ...value, lastSleep: event.target.value }))} /></label><label className="wide">LATEST STORY TITLE<Input value={journey.latestTitle} onChange={event => setJourney(value => ({ ...value, latestTitle: event.target.value }))} /></label><label className="wide">LATEST STORY SUMMARY<Textarea value={journey.latestText} onChange={event => setJourney(value => ({ ...value, latestText: event.target.value }))} /></label></div><Button className="admin-save-mobile" onClick={saveJourney}>Publish journey update</Button>
+        <div className="admin-form-grid"><label className="wide">LAST SLEPT<Input value={journey.lastSleep} onChange={event => setJourney(value => ({ ...value, lastSleep: event.target.value }))} /></label><label className="wide">LATEST STORY TITLE<Input value={journey.latestTitle} onChange={event => setJourney(value => ({ ...value, latestTitle: event.target.value }))} /></label><label className="wide">LATEST STORY SUMMARY<Textarea value={journey.latestText} onChange={event => setJourney(value => ({ ...value, latestText: event.target.value }))} /></label><label className="wide">PARTNER<Input value={journey.sponsorName} onChange={event => setJourney(value => ({ ...value, sponsorName: event.target.value }))} /></label></div><p className="from-phone">Your position, town, distance, day, battery, signal and altitude all arrive from the tracking app. The walk switches itself to live on the start date.</p><Button className="admin-save-mobile" onClick={saveJourney}>Publish journey update</Button>
       </TabsContent>
       <TabsContent value="plan" className="admin-panel"><div className="admin-heading"><div><h2>Before the first step</h2><p>The run-up on the homepage, counting itself down. The last date is the day the walk starts — change it and every arrival date on the route moves with it.</p></div><Button onClick={savePlan}>Publish the plan</Button></div><div className="route-controls"><Button variant="outline" onClick={() => setPlan(current => [...current, { date: current.at(-1)?.date ?? route.startDate, title: "New step", detail: "" }])}><Plus /> Add a step</Button></div><div className="route-editor">{plan.map((step, index) => <article key={index}><header><b>{String(index + 1).padStart(2, "0")}{index === plan.length - 1 ? " · THE FIRST STEP" : ""}</b><div><Button size="icon" variant="ghost" disabled={plan.length <= 1} onClick={() => setPlan(current => current.filter((_, stepIndex) => stepIndex !== index))}><Trash2 /></Button></div></header><div><label>DATE<Input type="date" value={step.date} onChange={event => editPlan(index, "date", event.target.value)} /></label><label>TITLE<Input value={step.title} onChange={event => editPlan(index, "title", event.target.value)} /></label><label className="wide">WHAT HAPPENS<Input value={step.detail} onChange={event => editPlan(index, "detail", event.target.value)} /></label></div></article>)}</div><Button className="admin-save-mobile" onClick={savePlan}>Publish the plan</Button>
       </TabsContent>

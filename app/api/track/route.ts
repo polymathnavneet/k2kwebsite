@@ -1,4 +1,6 @@
+import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
+import { journey } from "@/db/schema";
 import { isAdmin, isTracker } from "@/lib/server";
 import { processPoints, type TrackPoint } from "@/lib/tracking";
 
@@ -59,7 +61,7 @@ function extractPoints(body: Loose): TrackPoint[] {
     const lat = num(body.lat), lon = num(body.lon);
     const at = num(body.tst);
     if (lat !== null && lon !== null) {
-      points.push({ lat, lon, at: at ? new Date(at * 1000).toISOString() : undefined });
+      points.push({ lat, lon, at: at ? new Date(at * 1000).toISOString() : undefined, accuracy: num(body.acc) });
     }
   }
 
@@ -136,9 +138,24 @@ export async function POST(request: Request) {
   const db = getDb();
   const result = await processPoints(db, points);
 
-  // OwnTracks reads the reply as a list of commands for the phone and logs a
-  // complaint about anything else. It has nothing to collect, so: nothing.
-  if (body._type === "location") return Response.json([]);
+  // The phone already knows its battery, its signal and its altitude, and
+  // OwnTracks puts all three in every report. Reading them here is the
+  // difference between three fields Navneet has to remember to type and three
+  // that are simply true.
+  if (body._type === "location") {
+    const patch: Record<string, number | string> = {};
+    const battery = num(body.batt);
+    if (battery !== null && battery >= 0 && battery <= 100) patch.battery = Math.round(battery);
+    const altitude = num(body.alt);
+    if (altitude !== null && altitude > -500 && altitude < 9000) patch.altitude = Math.round(altitude);
+    const connection = { w: "Wi-Fi", m: "Mobile data", o: "No signal" }[String(body.conn ?? "")];
+    if (connection) patch.connectivity = connection;
+    if (Object.keys(patch).length) await db.update(journey).set(patch).where(eq(journey.id, 1));
+
+    // OwnTracks reads the reply as a list of commands for the phone and logs a
+    // complaint about anything else. It has nothing to collect, so: nothing.
+    return Response.json([]);
+  }
 
   return Response.json({ ok: true, accepted: points.length, ...result });
 }
