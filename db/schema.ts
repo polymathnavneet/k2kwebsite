@@ -64,6 +64,10 @@ export const journey = sqliteTable("journey", {
   stepsToday: integer("steps_today").notNull().default(0),
   walkingMinutes: integer("walking_minutes").notNull().default(0),
   currentPlace: text("current_place").notNull().default("Lucknow, Uttar Pradesh"),
+  // The corner of that town, and how precise the phone says the fix is. A city
+  // name alone cannot answer "where is he" for a city of three million.
+  precisePlace: text("precise_place").notNull().default(""),
+  accuracyM: real("accuracy_m"),
   lat: real("lat").notNull().default(26.8467),
   lon: real("lon").notNull().default(80.9462),
   temperature: real("temperature"),

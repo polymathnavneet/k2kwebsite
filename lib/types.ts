@@ -27,6 +27,8 @@ export type Journey = {
   stepsToday: number;
   walkingMinutes: number;
   currentPlace: string;
+  precisePlace: string;
+  accuracyM: number | null;
   lat: number;
   lon: number;
   temperature: number | null;

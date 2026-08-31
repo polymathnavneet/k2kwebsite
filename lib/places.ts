@@ -9,20 +9,30 @@
  * a town must never cost Navneet a GPS sync.
  */
 
-export type Place = { name: string; state: string };
+export type Place = {
+  /** The town a reader would recognise: "Lucknow". */
+  name: string;
+  state: string;
+  /** The corner of it he is actually standing in: "Bagiamau · 226030". */
+  precise: string;
+};
 
 const ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 
 /**
  * How closely to ask.
  *
- * Twelve is too coarse for India. Standing in Lucknow it answered with no
- * settlement at all - no city, no town, no village - leaving only the
- * administrative blocks around it. Fourteen resolves the actual settlement:
- * the same query that returned nothing usable in Lucknow returns "Kanyakumari"
- * at the southern tip, where twelve returned only the taluk it sits in.
+ * Twelve was too coarse for India: standing in Lucknow it returned no
+ * settlement at all, leaving only the administrative blocks to choose from.
+ * Fourteen fixed that. Eighteen keeps every town name fourteen gave - checked
+ * against Lucknow, Kanyakumari, Madurai, Rewa, Bettiah, Srinagar and a rural
+ * point in Uttar Pradesh - and adds the street or neighbourhood underneath.
+ *
+ * That extra line matters because "Lucknow" is three hundred and fifty square
+ * kilometres. It is a true answer and a useless one if what you wanted was to
+ * know where somebody actually is.
  */
-const ZOOM = 14;
+const ZOOM = 18;
 
 /**
  * Which of Nominatim's fields is the place a person would name.
@@ -46,6 +56,14 @@ const ZOOM = 14;
  * from a town down the road.
  */
 const NAME_FIELDS = ["city", "town", "village", "municipality", "state_district"] as const;
+
+/**
+ * And the finest thing Nominatim will name at this point, smallest first.
+ *
+ * A neighbourhood locates a person; a highway name locates a line hundreds of
+ * kilometres long, so the road is the last resort rather than the first.
+ */
+const FINE_FIELDS = ["neighbourhood", "hamlet", "suburb", "residential", "quarter", "city_block", "road"] as const;
 
 /** "Jammu district" is how a person says "Jammu". */
 const tidy = (value: string) => value.trim().replace(/\s+district$/i, "").slice(0, 80);
@@ -72,7 +90,7 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
 
     const name = pickName(address);
     if (!name) return null;
-    return { name, state: tidy(address.state ?? "") };
+    return { name, state: tidy(address.state ?? ""), precise: pickPrecise(address) };
   } catch {
     return null;
   }
@@ -85,4 +103,25 @@ export function pickName(address: Record<string, string>): string {
     if (value && value.trim()) return tidy(value);
   }
   return "";
+}
+
+/**
+ * The line under the town name: the corner of it he is in, and the postcode.
+ *
+ * Empty when Nominatim has nothing finer than the settlement itself, which is
+ * common in small towns and villages - and an empty line is the right answer
+ * there, because in a village the village name already is the precise answer.
+ */
+export function pickPrecise(address: Record<string, string>): string {
+  const head = pickName(address);
+  const parts: string[] = [];
+
+  for (const field of FINE_FIELDS) {
+    const value = address[field]?.trim();
+    // A "suburb" that simply repeats the town adds nothing.
+    if (value && value !== head) { parts.push(value); break; }
+  }
+  if (address.postcode?.trim()) parts.push(address.postcode.trim());
+
+  return parts.join(" · ").slice(0, 120);
 }

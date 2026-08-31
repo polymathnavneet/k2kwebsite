@@ -58,6 +58,9 @@ export function LivePin() {
         {!fix ? "Waiting for the first position"
           : stale ? `Last known: ${journey.currentPlace}`
           : `Navneet is in ${journey.currentPlace}`}
+        {/* The corner of the town, because the town on its own can be a city
+            of three million and answer nothing. */}
+        {fix && journey.precisePlace && <i className="live-pin-fine">{journey.precisePlace.split(" · ")[0]}</i>}
         {heard?.watching && <em> · GPS watching for movement</em>}
         {stale && heard && <em> · last fix {heard.phrase}</em>}
       </span>

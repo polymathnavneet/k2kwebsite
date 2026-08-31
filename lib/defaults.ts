@@ -85,6 +85,8 @@ export const defaultJourney: Journey = {
   stepsToday: 0,
   walkingMinutes: 0,
   currentPlace: "Lucknow, Uttar Pradesh",
+  precisePlace: "",
+  accuracyM: null,
   lat: 26.8467,
   lon: 80.9462,
   temperature: null,
