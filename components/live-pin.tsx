@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
-import { positioned, predictNext } from "@/lib/position";
+import { lastHeard, positioned, predictNext } from "@/lib/position";
 import { walkDay } from "@/lib/time";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
@@ -23,6 +24,12 @@ const exact = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
  * one figure a reader checks more than once a day. Before the first step it
  * would read "0 km today" every day for months, so it stays away until there is
  * a walk to measure.
+ *
+ * The tense follows the age of the fix. Reporting a position all day is what
+ * empties a phone battery, so the tracker speaks rarely and catches up at
+ * night, and the last position can honestly be hours old. "Navneet is in
+ * Lucknow" over a fix from breakfast is not tracking, it is guessing on his
+ * behalf - so past a few hours it says "was", and says when.
  */
 export function LivePin() {
   const { journey, route } = useLiveJourney();
@@ -30,11 +37,28 @@ export function LivePin() {
   const ahead = predictNext(route.stops, journey);
   const live = journey.mode === "live" && walkDay(route.startDate) >= 1;
 
+  // Read from the clock in an effect rather than during render: rendering has
+  // to give the same answer twice, and Date.now() does not. The first reading
+  // is scheduled rather than taken inline, so mounting does not set state
+  // during its own effect and start a second render.
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const first = setTimeout(tick, 0);
+    const timer = setInterval(tick, 60000);
+    return () => { clearTimeout(first); clearInterval(timer); };
+  }, []);
+  const heard = now === null ? null : lastHeard(journey, now);
+  const stale = Boolean(heard && !heard.fresh);
+
   return (
-    <Link className="live-pin" href="/route" aria-label="Where Navneet is now">
+    <Link className={`live-pin${stale ? " is-stale" : ""}`} href="/route" aria-label="Where Navneet is now">
       <span className="live-pin-dot" aria-hidden="true" />
       <span className="live-pin-where">
-        {fix ? `Navneet is in ${journey.currentPlace}` : "Waiting for the first position"}
+        {!fix ? "Waiting for the first position"
+          : stale ? `Navneet was in ${journey.currentPlace}`
+          : `Navneet is in ${journey.currentPlace}`}
+        {stale && heard && <em> · {heard.phrase}</em>}
       </span>
       <span className="live-pin-next">
         {live && <b>{exact.format(journey.distanceToday)} km today</b>}

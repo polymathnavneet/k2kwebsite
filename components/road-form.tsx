@@ -6,7 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { send } from "@/lib/outbox";
 
-type Kind = "place" | "story" | "support" | "question";
+type Kind = "place" | "story" | "support" | "question" | "walk";
+
+/**
+ * The promise, in one line, wherever somebody is about to write to him.
+ *
+ * A form that swallows a message without saying what happens next is a form
+ * people fill in once. Navneet answers every one of these himself - there is no
+ * team - and on a walking day that can mean a few days before he gets to it.
+ * Saying so is the difference between a slow reply and a reply that never came.
+ */
+export function ReplyPromise({ className = "" }: { className?: string }) {
+  return (
+    <p className={`reply-promise ${className}`.trim()}>
+      <b>Navneet answers every message himself.</b>{" "}
+      Not a team, not an auto-reply — him, on a phone, at the end of a day&apos;s
+      walking. It can take a few days. It will come.
+    </p>
+  );
+}
 
 export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind: Kind; placeLabel: string; messageLabel: string; buttonLabel: string }) {
   const [status, setStatus] = useState("");
@@ -24,7 +42,7 @@ export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind
       form.reset();
       setStatus(outcome.sent
         ? ((outcome.result as { public?: boolean })?.public
-            ? "Published. It is on the public wall now."
+            ? "Published. It is on the public wall now, and Navneet will reply to you himself."
             : "Received. This one needs a quick check before it appears publicly.")
         : "No signal — saved on this phone. It will post itself when you are back online.");
     } catch (error) {
@@ -37,6 +55,7 @@ export function RoadForm({ kind, placeLabel, messageLabel, buttonLabel }: { kind
     <label>PRIVATE CONTACT<Input required name="contact" placeholder="Email or phone — never public" /></label>
     <label className="wide">{placeLabel}<Input name="place" required={kind !== "question"} /></label>
     <label className="wide">{messageLabel}<Textarea name="message" required /></label>
+    <ReplyPromise className="wide" />
     <p className="public-choice wide">Your name, place and message go on the public wall straight away. Your contact detail is never published — it is only so Navneet can reach you.</p>
     <button className="primary-button wide" type="submit" disabled={sending}>{sending ? "Sending…" : buttonLabel}</button>
     {status && <p className="form-status wide" role="status">{status} {status.startsWith("Published") && <Link href="/messages">See it →</Link>}</p>}

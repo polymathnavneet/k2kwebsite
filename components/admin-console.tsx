@@ -61,6 +61,9 @@ export function AdminConsole() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [mind, setMind] = useState("");
   const [askMind, setAskMind] = useState<{ place: string; reason: string } | null>(null);
+  // Cheers. They have been counted since the site launched and shown to nobody,
+  // least of all to the man they were for.
+  const [cheers, setCheers] = useState<{ today: { cheer: number; follow: number }; counts: { cheer: number; follow: number } } | null>(null);
 
   async function request<T>(url: string, options: RequestInit = {}) {
     const cleanToken = token.trim();
@@ -85,6 +88,8 @@ export function AdminConsole() {
       setPlan(runUp.steps || []);
       const shots = await fetch("/api/media").then(response => response.json()).catch(() => ({ rows: [] }));
       setGallery(shots.rows || []);
+      const applause = await fetch("/api/reactions").then(response => response.json()).catch(() => null);
+      if (applause?.today) setCheers(applause);
       const diary = await request<{ rows: JournalEntry[] }>("/api/journal?admin=1").catch(() => null);
       if (diary) setEntries(diary.rows || []);
       setJourney(journeyData); setRoute(routeData); setMessages(messageData.rows); setBooks(bookData.rows);
@@ -357,6 +362,17 @@ export function AdminConsole() {
     </section>}
     <TabsContent value="journey" className="admin-panel">
         <div className="admin-heading"><div><h2>The walk right now</h2><p>Read this to check the tracking is alive. Nothing here needs setting — it is all your phone talking.</p></div></div>
+
+        {/* The one thing on this page that is not a machine reading: people
+            pressed a button because of him. It goes first because a hundred
+            and eleven strangers cheering is worth more at the end of a hard
+            day than any of the numbers under it. */}
+        {cheers && (cheers.counts.cheer > 0 || cheers.counts.follow > 0) && <div className="cheer-note">
+          <b>{cheers.today.cheer > 0
+            ? `${cheers.today.cheer.toLocaleString("en-IN")} ${cheers.today.cheer === 1 ? "person" : "people"} cheered you today`
+            : "Nobody has cheered yet today"}</b>
+          <span>{cheers.counts.cheer.toLocaleString("en-IN")} cheers in all · {cheers.counts.follow.toLocaleString("en-IN")} following the walk</span>
+        </div>}
 
         {/* Four facts, all from his phone. This is the "is it working?" glance,
             and the last-heard time is the one that matters: everything else on

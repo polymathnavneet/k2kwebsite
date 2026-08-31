@@ -68,3 +68,36 @@ export function predictNext(stops: RouteStop[], journey: Journey) {
     strayed: projected.offRouteKm > OFF_ROUTE_KM,
   };
 }
+
+/**
+ * How long ago the phone last said anything, and whether that is long enough
+ * to change how the site should talk about it.
+ *
+ * This exists because the phone is deliberately about to go quiet. Reporting a
+ * position all day is what drains the battery, so the tracker is set to speak
+ * rarely and catch up at night - which means the last known position can
+ * honestly be many hours old.
+ *
+ * A site that says "Navneet is in Lucknow" on top of a fix from breakfast is
+ * not tracking him, it is guessing on his behalf. Past FRESH_HOURS the wording
+ * moves to the past tense and the age is shown, so a reader can tell the
+ * difference between where he is and where he was.
+ */
+export const FRESH_HOURS = 3;
+
+export function lastHeard(journey: Journey, now = Date.now()) {
+  if (!journey.updatedAt) return null;
+  const at = new Date(journey.updatedAt).getTime();
+  if (!Number.isFinite(at)) return null;
+
+  const minutes = Math.max(0, Math.round((now - at) / 60000));
+  return {
+    minutes,
+    fresh: minutes < FRESH_HOURS * 60,
+    /** "22 minutes ago", "6 hours ago", "2 days ago". */
+    phrase: minutes < 2 ? "just now"
+      : minutes < 60 ? `${minutes} minutes ago`
+      : minutes < 48 * 60 ? `${Math.round(minutes / 60)} hour${Math.round(minutes / 60) === 1 ? "" : "s"} ago`
+      : `${Math.round(minutes / 1440)} days ago`,
+  };
+}

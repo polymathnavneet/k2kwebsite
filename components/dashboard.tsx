@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Share2 } from "lucide-react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, livePace } from "@/lib/geo";
@@ -14,6 +14,17 @@ const formatIso = (date: Date) => new Date(date.getTime() + 5.5 * 3600000).toISO
 export function Dashboard() {
   const { journey, route } = useLiveJourney();
   const [notice, setNotice] = useState("");
+  // Every cheer used to be posted into silence: the server counted it into a
+  // row no page read, so the button said "Your cheer reached the road" and the
+  // road never heard. The count comes back now and goes on the button, so a
+  // tap visibly joins something.
+  const [cheers, setCheers] = useState<{ cheer: number; follow: number } | null>(null);
+  useEffect(() => {
+    fetch("/api/reactions")
+      .then(response => response.json())
+      .then(data => setCheers(data.today ?? null))
+      .catch(() => {});
+  }, []);
 
   // Two separate questions, and conflating them is what made the tracker lie.
   //
@@ -66,7 +77,10 @@ export function Dashboard() {
     }
     localStorage.setItem(key, "1");
     setNotice(type === "cheer" ? "Your cheer reached the road 👏" : "A Long Walk is saved on this phone.");
-    fetch("/api/reactions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type }) }).catch(() => {});
+    fetch("/api/reactions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type }) })
+      .then(response => response.json())
+      .then(data => { if (data?.today) setCheers(data.today); })
+      .catch(() => {});
   }
 
   async function share() {
@@ -113,9 +127,9 @@ export function Dashboard() {
       </section>
 
       <section className="response-panel shell">
-        <div><div className="section-tag">03 · SEND A SIGNAL</div><h2>Respond to the road.</h2><p>Every button works, and weak-signal actions stay acknowledged on your phone.</p></div>
+        <div><div className="section-tag">03 · SEND A SIGNAL</div><h2>Respond to the road.</h2><p>Navneet sees the day&apos;s cheers on his phone at the end of the walking. Weak-signal taps stay acknowledged here and send themselves later.</p></div>
         <div className="response-buttons">
-          <button onClick={() => react("cheer")}><Check size={18} /> Cheer today</button>
+          <button onClick={() => react("cheer")}><Check size={18} /> Cheer today{cheers && cheers.cheer > 0 ? <b className="tally">{number.format(cheers.cheer)}</b> : null}</button>
           <button onClick={() => react("follow")}>＋ Follow A Long Walk</button>
           <button onClick={share}><Share2 size={18} /> Share journey</button>
           <a href="/games">◆ Play road games</a>

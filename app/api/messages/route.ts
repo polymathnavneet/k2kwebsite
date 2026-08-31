@@ -80,7 +80,10 @@ export async function POST(request: Request) {
     return Response.json({ ok: true });
   }
 
-  const allowed = ["place", "story", "support", "question", "sponsor"];
+  // "walk" is somebody offering to walk a stretch of it with him. It goes on
+  // the wall like the rest: the whole point is that other people can see the
+  // road filling up with company.
+  const allowed = ["place", "story", "support", "question", "walk", "sponsor"];
   const type = allowed.includes(String(body.type)) ? String(body.type) : "question";
   const name = clean(body.name, 60);
   const contact = clean(body.contact, 160);
