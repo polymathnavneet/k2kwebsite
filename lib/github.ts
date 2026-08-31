@@ -20,6 +20,7 @@ export const DATA_FILES = {
   messages: "data/messages.json",
   book: "data/book.json",
   journey: "data/journey.json",
+  journal: "data/journal.json",
   media: "data/media.json",
 } as const;
 

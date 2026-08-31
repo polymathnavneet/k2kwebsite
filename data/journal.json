@@ -1,0 +1,11 @@
+{
+  "note": "The journal. Add an entry to the list below, commit it, and the site publishes it within 15 minutes - no key, no admin panel, no button. Entries are matched by day: a day already on the site is left alone, so editing history here does nothing. To change a published day, use /admin.",
+  "entries": [
+    {
+      "day": "2026-08-30",
+      "question": "What was on your mind here?",
+      "body": "Going to Nepal with my sister",
+      "place": "Ramgarhwa, Bihar"
+    }
+  ]
+}

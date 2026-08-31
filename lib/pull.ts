@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
-import { contentBlocks, journey, routeConfig, siteSettings, timelineSteps } from "@/db/schema";
+import { contentBlocks, journalEntries, journey, routeConfig, siteSettings, timelineSteps } from "@/db/schema";
+import { readData } from "@/lib/github";
 import { fileId, parseCsv, parseSections, readDoc, readSheet } from "@/lib/google";
 import { clean } from "@/lib/server";
 
@@ -72,12 +73,14 @@ export async function saveSetting(db: Db, key: string, value: string) {
 export async function pull(db: Db): Promise<PullReport> {
   const report: PullReport = { applied: [], ignored: [], problems: [], at: new Date().toISOString() };
 
+  // The repository first, and always. It needs no setting up and no key: the
+  // repository is public, so the file is simply read. That is what lets ChatGPT
+  // publish a journal entry with nothing but the GitHub access it already has -
+  // commit the file, and the site picks it up on the next quarter hour.
+  await pullJournal(db, report);
+
   const sheetId = fileId(await setting(db, SETTING_KEYS.sheet));
   const docId = fileId(await setting(db, SETTING_KEYS.doc));
-  if (!sheetId && !docId) {
-    report.problems.push("No control sheet or content document has been set yet.");
-    return report;
-  }
 
   if (sheetId) {
     try {
@@ -98,6 +101,43 @@ export async function pull(db: Db): Promise<PullReport> {
   await saveSetting(db, SETTING_KEYS.pulledAt, report.at);
   await saveSetting(db, SETTING_KEYS.report, JSON.stringify(report));
   return report;
+}
+
+/**
+ * Journal entries committed to data/journal.json.
+ *
+ * New days only. A day already on the site is left alone, so an assistant
+ * rewriting the file's history cannot quietly revert something Navneet fixed by
+ * hand, and running this every fifteen minutes for nine months stays a no-op
+ * until there is genuinely something new.
+ */
+async function pullJournal(db: Db, report: PullReport) {
+  let entries: { day?: string; body?: string; question?: string; place?: string }[] = [];
+  try {
+    const { data } = await readData<{ entries?: typeof entries }>("journal");
+    entries = Array.isArray(data?.entries) ? data.entries : [];
+  } catch {
+    return; // The repository being unreachable must never break the sync.
+  }
+  if (!entries.length) return;
+
+  const existing = new Set((await db.select({ day: journalEntries.day }).from(journalEntries)).map(row => row.day));
+  const fresh = entries.filter(entry => DAY.test(String(entry.day)) && String(entry.body ?? "").trim().length >= 3 && !existing.has(String(entry.day)));
+  if (!fresh.length) return;
+
+  const [current] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
+  await db.insert(journalEntries).values(fresh.map(entry => ({
+    id: crypto.randomUUID(),
+    day: String(entry.day),
+    question: clean(entry.question, 200) || "From the road",
+    body: String(entry.body).trim().slice(0, 4000),
+    place: clean(entry.place, 100) || current?.currentPlace || "",
+    phase: current?.mode === "live" ? "road" : "preparation",
+    published: 1,
+    createdAt: new Date().toISOString(),
+  }))).onConflictDoNothing();
+
+  report.applied.push(`Journal from GitHub: ${fresh.map(entry => entry.day).join(", ")}`);
 }
 
 async function applySheet(db: Db, csv: string, report: PullReport) {
