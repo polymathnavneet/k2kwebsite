@@ -93,6 +93,7 @@ export const routeSuggestions = sqliteTable("route_suggestions", {
   km: integer("km").notNull(),
   reason: text("reason").notNull().default(""),
   status: text("status").notNull().default("pending"),
+  sightings: integer("sightings").notNull().default(1),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   decidedAt: text("decided_at"),
 });

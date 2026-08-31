@@ -67,6 +67,12 @@ export async function POST(request: Request) {
       await db.update(messages).set({ status: "public" }).where(eq(messages.id, id));
     } else if (action === "hide") {
       await db.update(messages).set({ status: "hidden" }).where(eq(messages.id, id));
+    } else if (action === "delete") {
+      // Hiding takes a message off the wall but keeps the person's contact
+      // detail. Deleting is for the other case - a message that should not be
+      // held at all - so the row goes, contact included, and does not come back.
+      if (!admin) return Response.json({ error: "That needs the admin passcode." }, { status: 403 });
+      await db.delete(messages).where(eq(messages.id, id));
     } else {
       return Response.json({ error: "Unknown action" }, { status: 400 });
     }
