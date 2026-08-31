@@ -7,6 +7,13 @@ export type RouteStop = {
   note: string;
 };
 
+export type GpsTrailPoint = {
+  recordedAt: string;
+  lat: number;
+  lon: number;
+  countedKm?: number;
+};
+
 export type WalkRoute = {
   title: string;
   startDate: string;
