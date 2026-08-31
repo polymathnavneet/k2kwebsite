@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ContentBlock } from "@/components/content-block";
 import { Countdown } from "@/components/countdown";
 import { Dashboard } from "@/components/dashboard";
+import { DayByDay } from "@/components/day-by-day";
+import { RightNow } from "@/components/right-now";
 import proposal from "@/data/proposal.json";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -20,6 +22,12 @@ export default function Home() {
       <SiteHeader />
       <Dashboard />
 
+      {/* The walk itself, before anything the site wants from the reader.
+          Both of these used to live inside the dashboard; the dashboard now
+          ends at the metric grid, so they stand on their own here. */}
+      <section className="right-now-band shell"><RightNow /></section>
+      <DayByDay />
+
       {/* Above the sponsorship call and above the proof, because the thing he
           wants most from this website is not money - it is people. Both doors
           were previously the fourth item in a list two thirds of the way down
@@ -27,7 +35,7 @@ export default function Home() {
       <section className="talk-call">
         <div className="shell talk-call-inner">
           <div className="talk-copy">
-            <div className="section-tag warm">01 · THE PART THAT IS NOT A MAP</div>
+            <div className="section-tag warm">04 · THE PART THAT IS NOT A MAP</div>
             <h2>Talk to me.<br />I will answer.</h2>
             <p>Four thousand two hundred and seventy kilometres is a long time to be alone with your own opinions. Ask me something, or come and walk a piece of it with me — both go straight to my phone, and I reply to every one myself.</p>
           </div>
