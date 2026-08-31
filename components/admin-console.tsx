@@ -122,6 +122,12 @@ export function AdminConsole() {
     return () => clearInterval(timer);
   }, []);
 
+  // Sponsorship enquiries are held rather than published, so they would
+  // otherwise sit in the wall marked "held" between a stranger's note and a
+  // spam message. They get their own tab.
+  const sponsorEnquiries = messages.filter(row => row.type === "sponsor");
+  const wallMessages = messages.filter(row => row.type !== "sponsor");
+
   const heardAgo = now && journey.updatedAt
     ? Math.max(0, Math.round((now - new Date(journey.updatedAt).getTime()) / 60000))
     : null;
@@ -223,13 +229,6 @@ export function AdminConsole() {
     finally { setBusyRow(""); }
   }
 
-  async function saveStatus(status: string) {
-    setJourney(current => ({ ...current, status }));
-    say(`Published: ${status.toLowerCase()}.`);
-    try {
-      await request("/api/journey", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...journey, status }) });
-    } catch (error) { say(error instanceof Error ? error.message : "Could not publish"); }
-  }
 
 
 
@@ -341,7 +340,7 @@ export function AdminConsole() {
       </div>
     </section>}
     <Tabs defaultValue="journey">
-      <TabsList className="admin-tabs"><TabsTrigger value="journey">Journey</TabsTrigger><TabsTrigger value="plan">Before the walk</TabsTrigger><TabsTrigger value="messages">Messages {messages.length ? `(${messages.length})` : ""}</TabsTrigger><TabsTrigger value="journal">Journal {entries.length ? `(${entries.length})` : ""}</TabsTrigger><TabsTrigger value="media">Pictures {gallery.length ? `(${gallery.length})` : ""}</TabsTrigger><TabsTrigger value="book">Book {books.length ? `(${books.length})` : ""}</TabsTrigger></TabsList>
+      <TabsList className="admin-tabs"><TabsTrigger value="journey">Journey</TabsTrigger><TabsTrigger value="plan">Before the walk</TabsTrigger><TabsTrigger value="sponsors" className={sponsorEnquiries.length ? "has-new" : ""}>Sponsors {sponsorEnquiries.length ? `(${sponsorEnquiries.length})` : ""}</TabsTrigger><TabsTrigger value="messages">Messages {wallMessages.length ? `(${wallMessages.length})` : ""}</TabsTrigger><TabsTrigger value="journal">Journal {entries.length ? `(${entries.length})` : ""}</TabsTrigger><TabsTrigger value="media">Pictures {gallery.length ? `(${gallery.length})` : ""}</TabsTrigger><TabsTrigger value="book">Book {books.length ? `(${books.length})` : ""}</TabsTrigger></TabsList>
       {suggestions.length > 0 && <section className="suggestions" aria-label="Places to confirm">
       <div className="suggestions-head"><b>{suggestions.length === 1 ? "A new place on your route" : `${suggestions.length} new places on your route`}</b><span>Nothing changes until you say yes.</span></div>
       {suggestions.map(suggestion => <article key={suggestion.id}>
@@ -357,7 +356,7 @@ export function AdminConsole() {
       </article>)}
     </section>}
     <TabsContent value="journey" className="admin-panel">
-        <div className="admin-heading"><div><h2>The walk right now</h2><p>Read this to check the tracking is alive. The only thing to set is what you are doing.</p></div></div>
+        <div className="admin-heading"><div><h2>The walk right now</h2><p>Read this to check the tracking is alive. Nothing here needs setting — it is all your phone talking.</p></div></div>
 
         {/* Four facts, all from his phone. This is the "is it working?" glance,
             and the last-heard time is the one that matters: everything else on
@@ -369,17 +368,29 @@ export function AdminConsole() {
           <div><small>PHONE LAST REPORTED</small><strong className={heardAgo !== null && heardAgo > 720 ? "off" : ""}>{heardAgo === null ? "Never" : heardAgo < 60 ? `${heardAgo} min ago` : heardAgo < 2880 ? `${Math.round(heardAgo / 60)} hours ago` : `${Math.round(heardAgo / 1440)} days ago`}</strong></div>
         </div>
 
-        {/* The one thing his phone cannot work out. One tap, and it publishes. */}
-        <div className="status-presets">{["Walking", "Resting", "Eating", "Sleeping", "Filming", "Need help"].map(value =>
-          <button className={journey.status === value ? "active" : ""} key={value} onClick={() => saveStatus(value)}>{value}</button>)}</div>
-
-        <p className="from-phone">Your town, distance, day, pace, next stop, battery and signal all come from the tracking app, and the totals are recounted from it every quarter of an hour. The walk switches itself to live on {route.startDate}.</p>
+        <p className="from-phone">Your town, distance, day, pace and next stop all come from the tracking app, and the totals are recounted from it every quarter of an hour. The walk switches itself to live on {route.startDate}.</p>
       </TabsContent>
 
       <TabsContent value="plan" className="admin-panel"><div className="admin-heading"><div><h2>Before the first step</h2><p>The run-up on the homepage, counting itself down. The last date is the day the walk starts — change it and every arrival date on the route moves with it.</p></div><Button onClick={savePlan}>Publish the plan</Button></div><div className="route-controls"><Button variant="outline" onClick={() => setPlan(current => [...current, { date: current.at(-1)?.date ?? route.startDate, title: "New step", detail: "" }])}><Plus /> Add a step</Button></div><div className="route-editor">{plan.map((step, index) => <article key={index}><header><b>{String(index + 1).padStart(2, "0")}{index === plan.length - 1 ? " · THE FIRST STEP" : ""}</b><div><Button size="icon" variant="ghost" disabled={plan.length <= 1} onClick={() => setPlan(current => current.filter((_, stepIndex) => stepIndex !== index))}><Trash2 /></Button></div></header><div><label>DATE<Input type="date" value={step.date} onChange={event => editPlan(index, "date", event.target.value)} /></label><label>TITLE<Input value={step.title} onChange={event => editPlan(index, "title", event.target.value)} /></label><label className="wide">WHAT HAPPENS<Input value={step.detail} onChange={event => editPlan(index, "detail", event.target.value)} /></label></div></article>)}</div><Button className="admin-save-mobile" onClick={savePlan}>Publish the plan</Button>
       </TabsContent>
 
-      <TabsContent value="messages" className="admin-panel"><div className="admin-heading"><div><h2>Public reply sheet</h2><p>Type a reply and press Reply — it appears under the message on the public wall straight away. Yellow cells are private and never published.</p></div><Button variant="outline" onClick={() => exportCsv("messages")}><Download /> Export CSV</Button></div><div className="admin-table"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Name</TableHead><TableHead>Message</TableHead><TableHead>Private contact</TableHead><TableHead>Status</TableHead><TableHead>Public reply</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{messages.map(row => <TableRow key={row.id}><TableCell data-label="Date">{new Date(row.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell data-label="Type">{row.type}</TableCell><TableCell data-label="Name">{row.name}<small>{row.place}</small></TableCell><TableCell data-label="Message" className="wrap-cell">{row.message}</TableCell><TableCell data-label="Private contact" className="private-cell">{row.contact || <em>not carried over</em>}</TableCell><TableCell data-label="Status"><span className={`status-chip ${row.status}`}>{row.status === "public" ? "On the wall" : row.status === "hidden" ? "Hidden" : "Held"}</span></TableCell><TableCell data-label="Public reply"><Textarea value={replies[row.id] || ""} onChange={event => setReplies(value => ({ ...value, [row.id]: event.target.value }))} /></TableCell><TableCell data-label="Actions"><div className="table-actions"><Button disabled={busyRow === row.id} onClick={() => messageAction(row.id, "reply")}>{busyRow === row.id ? "Saving…" : row.reply ? "Update reply" : "Reply"}</Button>{row.status !== "public" && <Button variant="outline" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "publish")}>Put on the wall</Button>}{row.status !== "hidden" && <Button variant="destructive" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "hide")}>Hide</Button>}<Button variant="ghost" disabled={busyRow === row.id} onClick={() => { if (confirm(`Delete ${row.name}'s message for good? Hiding keeps it; this does not.`)) messageAction(row.id, "delete"); }}><Trash2 /> Delete</Button></div>{rowNote[row.id] && <p className="row-note" role="status">{rowNote[row.id]}</p>}</TableCell></TableRow>)}</TableBody></Table></div>
+      <TabsContent value="sponsors" className="admin-panel">
+        <div className="admin-heading"><div><h2>Sponsorship enquiries</h2><p>Sent from the sponsorship page, and held here only. A brand&apos;s interest never appears on the public wall. Tap the address to write back.</p></div></div>
+        {sponsorEnquiries.length === 0
+          ? <p className="empty-note">Nothing yet. When a brand writes from the sponsorship page it lands here, and nowhere else.</p>
+          : <div className="sponsor-list">{sponsorEnquiries.map(row => <article className="sponsor-row" key={row.id}>
+              <header><b>{row.name}</b><span>{new Date(row.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span></header>
+              {row.place && <p className="sponsor-brand">{row.place}</p>}
+              {row.contact
+                ? <a className="sponsor-contact" href={row.contact.includes("@") ? `mailto:${row.contact}` : `tel:${row.contact.replace(/[^+\d]/g, "")}`}>{row.contact}</a>
+                : <p className="sponsor-contact none">No contact given</p>}
+              <p className="sponsor-message">{row.message}</p>
+              <div className="sponsor-actions"><Button variant="ghost" disabled={busyRow === row.id} onClick={() => { if (confirm(`Delete this enquiry from ${row.name}? It cannot be got back.`)) messageAction(row.id, "delete"); }}><Trash2 /> Delete</Button></div>
+              {rowNote[row.id] && <p className="row-note" role="status">{rowNote[row.id]}</p>}
+            </article>)}</div>}
+      </TabsContent>
+
+      <TabsContent value="messages" className="admin-panel"><div className="admin-heading"><div><h2>Public reply sheet</h2><p>Type a reply and press Reply — it appears under the message on the public wall straight away. Yellow cells are private and never published.</p></div><Button variant="outline" onClick={() => exportCsv("messages")}><Download /> Export CSV</Button></div><div className="admin-table"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Name</TableHead><TableHead>Message</TableHead><TableHead>Private contact</TableHead><TableHead>Status</TableHead><TableHead>Public reply</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{wallMessages.map(row => <TableRow key={row.id}><TableCell data-label="Date">{new Date(row.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell data-label="Type">{row.type}</TableCell><TableCell data-label="Name">{row.name}<small>{row.place}</small></TableCell><TableCell data-label="Message" className="wrap-cell">{row.message}</TableCell><TableCell data-label="Private contact" className="private-cell">{row.contact || <em>not carried over</em>}</TableCell><TableCell data-label="Status"><span className={`status-chip ${row.status}`}>{row.status === "public" ? "On the wall" : row.status === "hidden" ? "Hidden" : "Held"}</span></TableCell><TableCell data-label="Public reply"><Textarea value={replies[row.id] || ""} onChange={event => setReplies(value => ({ ...value, [row.id]: event.target.value }))} /></TableCell><TableCell data-label="Actions"><div className="table-actions"><Button disabled={busyRow === row.id} onClick={() => messageAction(row.id, "reply")}>{busyRow === row.id ? "Saving…" : row.reply ? "Update reply" : "Reply"}</Button>{row.status !== "public" && <Button variant="outline" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "publish")}>Put on the wall</Button>}{row.status !== "hidden" && <Button variant="destructive" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "hide")}>Hide</Button>}<Button variant="ghost" disabled={busyRow === row.id} onClick={() => { if (confirm(`Delete ${row.name}'s message for good? Hiding keeps it; this does not.`)) messageAction(row.id, "delete"); }}><Trash2 /> Delete</Button></div>{rowNote[row.id] && <p className="row-note" role="status">{rowNote[row.id]}</p>}</TableCell></TableRow>)}</TableBody></Table></div>
       </TabsContent>
       <TabsContent value="journal" className="admin-panel">
         <div className="admin-heading"><div><h2>Field notes</h2><p>Answering the daily question above publishes here straight away. Answering twice in one day replaces that day&apos;s entry rather than adding a second.</p></div></div>

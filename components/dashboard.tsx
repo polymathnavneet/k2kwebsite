@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Share2 } from "lucide-react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, livePace } from "@/lib/geo";
-import { positioned, predictNext } from "@/lib/position";
+import { predictNext } from "@/lib/position";
 import { formatWalkDate, istNoon, walkDay } from "@/lib/time";
 import { LiveMap } from "./live-map";
 
@@ -15,13 +15,13 @@ export function Dashboard() {
   const { journey, route } = useLiveJourney();
   const [notice, setNotice] = useState("");
 
-  // Three separate questions, and conflating them is what made the tracker lie.
+  // Two separate questions, and conflating them is what made the tracker lie.
   //
-  //   live     - has the walk been announced as begun? Wording only.
-  //   fix      - is there a real position from the phone, or the placeholder?
-  //   tracking - is that position near enough the route for "next stop" to mean
-  //              anything? Standing 200 km away in Bihar, it does not, and the
-  //              old code answered "Nagercoil, 22 km" rather than admitting it.
+  //   live   - has the walk been announced as begun? Wording and figures both.
+  //   ahead  - is there a real position, and is it near enough the route for
+  //            "next stop" to mean anything? Standing 200 km away in Bihar it
+  //            does not, and the old code answered "Nagercoil, 22 km" rather
+  //            than admitting it.
   //
   // Progress follows the position along the route, not the raw distance walked.
   // On a detour those differ, and the raw figure would claim towns had been
@@ -33,7 +33,6 @@ export function Dashboard() {
   // that promises the distance is real.
   const started = walkDay(route.startDate) >= 1;
   const live = journey.mode === "live" && started;
-  const fix = positioned(journey);
   const walked = started ? journey.distanceTotal : 0;
   const walkedToday = started ? journey.distanceToday : 0;
   // Worked out from the position every time, not from the stored progress
@@ -90,8 +89,8 @@ export function Dashboard() {
       </section>
 
       <section className="metric-grid" aria-label="Walk metrics">
-        <article><small>DAY</small><strong>{live ? journey.day : "—"}</strong><span>{live ? "Expedition day" : "Before start"}</span></article>
-        <article><small>TOTAL DISTANCE</small><strong>{number.format(walked)}<em> km</em></strong><span>of {number.format(route.totalDistance)} km</span></article>
+        <article><small>WALKED TODAY</small><strong>{number.format(walkedToday)}<em> km</em></strong><span>{live ? `Day ${journey.day} · counted from the tracker` : "Counting starts on the first step"}</span></article>
+        <article><small>WALKED IN ALL</small><strong>{number.format(walked)}<em> km</em></strong><span>of {number.format(route.totalDistance)} km to Srinagar</span></article>
         <article>
           <small>{live ? "DAYS REMAINING" : "DAYS TO THE FIRST STEP"}</small>
           <strong>{daysLeft}</strong>
@@ -108,13 +107,6 @@ export function Dashboard() {
 
       {/* Steps, weather and altitude have gone: nothing fed them, so they read
           "Awaiting data" and "—" beside figures that were real. */}
-      <section className="signal-grid">
-        <article><small>WHERE</small><strong>{fix ? `Navneet is in ${journey.currentPlace}` : "Position not sent yet"}</strong></article>
-        <article><small>STATUS</small><strong>{journey.status}</strong></article>
-        <article><small>SIGNAL</small><strong>{journey.connectivity}</strong></article>
-        <article><small>PHONE</small><strong>{journey.battery == null ? "—" : `${journey.battery}%`}</strong></article>
-      </section>
-
       <section className="field-grid shell">
         <article className="dispatch-card"><div className="section-tag">01 · LATEST FIELD SIGNAL</div><div><small>{journey.currentPlace.toUpperCase()}</small><h2>{journey.latestTitle}</h2><p>{journey.latestText}</p><a href={journey.latestUrl}>Read the dispatch →</a></div></article>
         <aside className="field-card"><div className="section-tag">02 · TODAY IN THE FIELD</div><dl><div><dt>Walking</dt><dd>{journey.walkingMinutes} min</dd></div><div><dt>Phone</dt><dd>{journey.battery == null ? "—" : `${journey.battery}%`}</dd></div><div><dt>Partner</dt><dd>{journey.sponsorName}</dd></div></dl></aside>

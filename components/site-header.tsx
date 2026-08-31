@@ -21,11 +21,14 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState("");
 
-  // The chip claimed PREPARATION even once the walk was live.
+  // The chip claimed PREPARATION even once the walk was live. It shows which
+  // phase the walk is in and nothing more: what he is doing at this moment was
+  // something he had to keep telling the site, and it was wrong more often than
+  // it was right.
   useEffect(() => {
     fetch("/api/journey")
       .then(response => response.json())
-      .then(data => setStatus(data.mode === "live" ? (data.status || "WALKING") : "PREPARATION"))
+      .then(data => setStatus(data.mode === "live" ? "LIVE WALK" : "PREPARATION"))
       .catch(() => setStatus("PREPARATION"));
   }, []);
   return (
