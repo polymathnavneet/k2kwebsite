@@ -186,7 +186,7 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
   const day = started ? dayOfWalk(startDate) : previous.day;
   // Both figures are added up from the recorded points rather than carried
   // forward, so they cannot drift. See totals() below.
-  const { distanceTotal, distanceToday } = await totals(db);
+  const { distanceTotal, distanceToday } = await totals(db, startDate);
 
   const place = await reverseGeocode(last.lat, last.lon);
   let suggestion: TrackResult["suggestion"] = null;
@@ -201,6 +201,12 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
 
   const next = nextStopAfter(stops, progressKm);
   const currentPlace = place ? [place.name, place.state].filter(Boolean).join(", ") : previous.currentPlace;
+  // A town name cannot answer "where is he" for a city of three million, so the
+  // corner of it is kept beside the town, along with how precise the phone
+  // claims this fix is. Both come from the last fix in the batch, which is the
+  // one the site is about to call his position.
+  const precisePlace = place ? place.precise : previous.precisePlace;
+  const accuracyM = last.accuracy ?? previous.accuracyM ?? null;
 
   const phoneTime = last.at ? new Date(last.at) : null;
   const phoneUpdatedAt = phoneTime && Number.isFinite(phoneTime.getTime()) && phoneTime.getTime() <= Date.now() + 5 * 60000
@@ -218,6 +224,8 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
     routeProgressKm: Math.min(10000, Math.max(0, progressKm)),
     offRouteKm: Math.min(2000, Math.max(0, offRouteKm)),
     currentPlace,
+    precisePlace,
+    accuracyM,
     // The walk announces itself on the morning of the start date rather than
     // waiting for somebody to remember a dropdown.
     ...(becomesLive ? { mode: "live" as const } : {}),
@@ -265,6 +273,15 @@ function explain(state: {
   return parts.join(" ") || "Position updated.";
 }
 
+/**
+ * The first instant of the walk, as a UTC timestamp comparable with the times
+ * fixes are recorded at. Midnight in India on the start date is 18:30 UTC the
+ * evening before.
+ */
+export function walkOpensAt(startDate: string) {
+  return new Date(`${startDate}T00:00:00+05:30`).toISOString();
+}
+
 /** Today's totals, used to reset the day's distance at Indian midnight. */
 export const trackingDayKey = istDayKey;
 
@@ -287,12 +304,25 @@ export const trackingDayKey = istDayKey;
  * on the day number was why distance today never reset before the walk began:
  * the day number is 0 every day until the seventeenth of December, so every
  * day looked like the same day.
+ *
+ * Nothing recorded before the walk starts is counted, and that is enforced here
+ * rather than only where the fixes are written. Fixes banked before that rule
+ * existed are still in the table flagged as counted - two of them, eight
+ * milliseconds apart, between them claiming fifty-seven kilometres - and
+ * summing them meant the walk would have opened on day one with fifty-seven
+ * kilometres already on the board. Filtering by the start date repairs those
+ * rows without a migration, and stays right if the start date ever moves.
  */
-export async function totals(db: Db) {
+export async function totals(db: Db, startDate?: string) {
+  const from = startDate ? walkOpensAt(startDate) : null;
+  const counted = from
+    ? and(eq(gpsPoints.counted, 1), gte(gpsPoints.recordedAt, from))
+    : eq(gpsPoints.counted, 1);
+
   const [summed] = await db
     .select({ km: sql<number>`coalesce(sum(${gpsPoints.countedKm}), 0)` })
     .from(gpsPoints)
-    .where(eq(gpsPoints.counted, 1));
+    .where(counted);
 
   // Only the last couple of days can belong to today, whichever side of
   // midnight the recording clock was on.
@@ -300,7 +330,7 @@ export async function totals(db: Db) {
   const recent = await db
     .select({ recordedAt: gpsPoints.recordedAt, countedKm: gpsPoints.countedKm })
     .from(gpsPoints)
-    .where(and(eq(gpsPoints.counted, 1), gte(gpsPoints.recordedAt, since)));
+    .where(and(counted, gte(gpsPoints.recordedAt, since)));
 
   const today = istDayKey();
   const todayKm = recent
@@ -328,7 +358,7 @@ export async function reconcile(db: Db) {
   const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
   const startDate = config?.startDate ?? defaultRoute.startDate;
   const started = dayOfWalk(startDate) >= 1;
-  const { distanceTotal, distanceToday } = await totals(db);
+  const { distanceTotal, distanceToday } = await totals(db, startDate);
   const day = started ? dayOfWalk(startDate) : previous.day;
 
   // Ask again what this position is called.
@@ -344,17 +374,19 @@ export async function reconcile(db: Db) {
   // fix or a fix of the naming. Ninety-six lookups a day is far inside what
   // Nominatim asks for, and a failure returns null and simply keeps the name
   // it had.
-  const placePatch: { currentPlace?: string } = {};
+  const placePatch: { currentPlace?: string; precisePlace?: string } = {};
   if (Number.isFinite(previous.lat) && Number.isFinite(previous.lon)) {
     const place = await reverseGeocode(previous.lat, previous.lon);
     const named = place ? [place.name, place.state].filter(Boolean).join(", ") : "";
     if (named && named !== previous.currentPlace) placePatch.currentPlace = named;
+    if (place && place.precise !== previous.precisePlace) placePatch.precisePlace = place.precise;
   }
 
   const figuresMatch = distanceTotal === previous.distanceTotal
     && distanceToday === previous.distanceToday
     && day === previous.day;
-  if (figuresMatch && !placePatch.currentPlace && !(started && previous.mode !== "live")) return null;
+  const placeMoved = placePatch.currentPlace !== undefined || placePatch.precisePlace !== undefined;
+  if (figuresMatch && !placeMoved && !(started && previous.mode !== "live")) return null;
 
   await db.update(journey)
     .set({ distanceTotal, distanceToday, day, ...placePatch, ...(started && previous.mode !== "live" ? { mode: "live" } : {}) })

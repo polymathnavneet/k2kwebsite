@@ -4,7 +4,7 @@ import ts from "typescript";
 
 const src = readFileSync("lib/places.ts", "utf8").replace(/^import .*$/gm, "");
 const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-const { pickName } = await import("data:text/javascript," + encodeURIComponent(js));
+const { pickName, pickPrecise } = await import("data:text/javascript," + encodeURIComponent(js));
 
 /**
  * Real answers from Nominatim at zoom 14, recorded by querying it for points
@@ -78,3 +78,42 @@ console.log("# ✓ a lone tehsil is refused rather than published");
 // returns nothing, so a refusal shows the last known town, never a wrong one.
 assert.equal(pickName({}), "");
 console.log("# ✓ an empty answer is empty, not a guess");
+
+// --- the corner of the town, not just the town ---------------------------
+//
+// "Lucknow" is three hundred and fifty square kilometres. True, and no answer
+// at all to somebody asking where the man is. These are the same real replies
+// at zoom 18, which keeps every town name above and adds the detail under it.
+const fine = [
+  ["his own fix in Lucknow", "Bagiamau · 226030", {
+    suburb: "Bagiamau", county: "Sarojani Nagar", state_district: "Lucknow",
+    state: "Uttar Pradesh", postcode: "226030",
+  }],
+  ["Srinagar", "Karan Nagar · 190010", {
+    suburb: "Karan Nagar", city: "Srinagar", county: "Srinagar (South)",
+    state_district: "Srinagar", state: "Jammu and Kashmir", postcode: "190010",
+  }],
+  // A neighbourhood beats a suburb: it is the smaller of the two.
+  ["Madurai", "Poondhotam · 625014", {
+    neighbourhood: "Poondhotam", suburb: "Ward 52", city: "Madurai",
+    state_district: "Madurai", state: "Tamil Nadu", postcode: "625014",
+  }],
+  // In a village the village name already is the precise answer, so the line
+  // carries the postcode alone rather than repeating the place.
+  ["a small town with nothing finer", "486001", {
+    city: "Rewa", city_district: "Rewa", county: "Huzur Tahsil",
+    state_district: "Rewa", state: "Madhya Pradesh", postcode: "486001",
+  }],
+  // A "suburb" that merely repeats the town adds nothing and is dropped.
+  ["Bettiah, where the suburb repeats the town", "845438", {
+    residential: "Bettiah", city: "Bettiah", county: "Bettiah",
+    state_district: "West Champaran", state: "Bihar", postcode: "845438",
+  }],
+  ["nothing at all", "", { state: "Bihar" }],
+];
+
+for (const [label, expected, address] of fine) {
+  const got = pickPrecise(address);
+  assert.equal(got, expected, `${label}: expected "${expected}", got "${got}"`);
+  console.log(`# ✓ ${label} -> "${got}"`);
+}

@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { routeConfig } from "@/db/schema";
 import { defaultRoute } from "@/lib/defaults";
 import { istDayKey, walkDay } from "@/lib/time";
+import { walkOpensAt } from "@/lib/tracking";
 
 /**
  * GET /api/days -> one row per day walked, oldest last.
@@ -32,6 +33,12 @@ export async function GET(request: Request) {
 
   const [config] = await db.select().from(routeConfig).limit(1);
   const startDate = config?.startDate ?? defaultRoute.startDate;
+  // Nothing before the first step, the same rule the totals follow. Fixes
+  // banked before that rule existed are still in the table flagged as counted -
+  // two of them, eight milliseconds apart, between them claiming fifty-seven
+  // kilometres - and without this the section would have drawn a bar for a day
+  // months before the walk began, contradicting every other figure on the page.
+  const opensAt = walkOpensAt(startDate);
 
   // Grouped in SQL rather than by reading every fix into memory: a hundred and
   // eighty days of walking is tens of thousands of rows, and a public page must
@@ -45,6 +52,7 @@ export async function GET(request: Request) {
       max(${sql.identifier("recorded_at")}) as lastAt
     from ${sql.identifier("gps_points")}
     where ${sql.identifier("counted")} = 1
+      and ${sql.identifier("recorded_at")} >= ${opensAt}
     group by day
     order by day desc
     limit ${limit}

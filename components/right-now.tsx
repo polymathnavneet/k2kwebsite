@@ -73,7 +73,23 @@ export function RightNow() {
       <div className="right-now-place">
         <small>{fix ? (heard && !heard.fresh ? "LAST SEEN IN" : "NAVNEET IS IN") : "STARTING FROM"}</small>
         <strong>{fix ? journey.currentPlace : route.stops[0]?.name}</strong>
+        {fix && journey.precisePlace && <span className="right-now-fine">{journey.precisePlace}</span>}
       </div>
+
+      {/* A town name cannot answer "where is he" for a city of three million.
+          These two lines can: the position itself, and how far out the phone
+          says it might be. Tapping opens the exact point on a map. */}
+      {fix && <a
+        className="right-now-exact"
+        href={`https://www.openstreetmap.org/?mlat=${journey.lat}&mlon=${journey.lon}#map=17/${journey.lat}/${journey.lon}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <b>{journey.lat.toFixed(5)}, {journey.lon.toFixed(5)}</b>
+        <span>{journey.accuracyM == null
+          ? "Exact point · open the map"
+          : `Accurate to about ${Math.round(journey.accuracyM)} m · open the map`}</span>
+      </a>}
 
       <dl className="right-now-figures">
         <div>
