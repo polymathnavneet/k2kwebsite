@@ -32,6 +32,9 @@ export function AdminConsole() {
   const [mirrorsBack, setMirrorsBack] = useState(false);
   const [busyRow, setBusyRow] = useState("");
   const [flash, setFlash] = useState("");
+  // Ticked once a minute rather than read during render, so "20 min ago" ages
+  // while the panel is open instead of freezing at whatever it said on load.
+  const [now, setNow] = useState(0);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
@@ -109,6 +112,19 @@ export function AdminConsole() {
   useEffect(() => {
     fetch("/api/sync").then(response => response.json()).then(data => setMirrorsBack(Boolean(data.canWrite))).catch(() => {});
   }, []);
+
+  // Ticked once a minute rather than read during render, so "20 min ago" ages
+  // while the panel is open instead of freezing at whatever it said on load.
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    tick();
+    const timer = setInterval(tick, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const heardAgo = now && journey.updatedAt
+    ? Math.max(0, Math.round((now - new Date(journey.updatedAt).getTime()) / 60000))
+    : null;
 
 
   // Pull hand-edited data/*.json out of the repository and make it live.
@@ -197,11 +213,14 @@ export function AdminConsole() {
     finally { setBusyRow(""); }
   }
 
-  async function saveJourney() {
-    say("Publishing journey update…");
-    try { await request("/api/journey", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(journey) }); say("Journey update is live."); }
-    catch (error) { say(error instanceof Error ? error.message : "Could not publish"); }
+  async function saveStatus(status: string) {
+    setJourney(current => ({ ...current, status }));
+    say(`Published: ${status.toLowerCase()}.`);
+    try {
+      await request("/api/journey", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...journey, status }) });
+    } catch (error) { say(error instanceof Error ? error.message : "Could not publish"); }
   }
+
 
 
   /**
@@ -322,10 +341,26 @@ export function AdminConsole() {
         </div>
       </article>)}
     </section>}
-    <TabsContent value="journey" className="admin-panel"><div className="admin-heading"><div><h2>The walk right now</h2><p>Everything here comes from your phone. The only boxes left are the things it cannot know.</p></div><Button onClick={saveJourney}>Publish update</Button></div>
-        <div className="progress-strip"><div><small>ALONG THE ROUTE</small><strong>{Math.round(journey.routeProgressKm ?? 0).toLocaleString("en-IN")} km</strong></div><div><small>WALKED</small><strong>{Math.round(journey.distanceTotal).toLocaleString("en-IN")} km</strong></div><div><small>OFF THE LINE</small><strong className={(journey.offRouteKm ?? 0) > 12 ? "off" : ""}>{Math.round(journey.offRouteKm ?? 0)} km</strong></div><div><small>NEXT STOP</small><strong>{route.stops.find(stop => stop.km > (journey.routeProgressKm ?? 0))?.name ?? "Finished"}</strong></div></div><div className="status-presets">{["Walking", "Resting", "Eating", "Sleeping", "Filming", "Need help"].map(value => <button className={journey.status === value ? "active" : ""} key={value} onClick={() => setJourney(current => ({ ...current, status: value }))}>{value}</button>)}</div>
-        <div className="admin-form-grid"><label className="wide">LAST SLEPT<Input value={journey.lastSleep} onChange={event => setJourney(value => ({ ...value, lastSleep: event.target.value }))} /></label><label className="wide">LATEST STORY TITLE<Input value={journey.latestTitle} onChange={event => setJourney(value => ({ ...value, latestTitle: event.target.value }))} /></label><label className="wide">LATEST STORY SUMMARY<Textarea value={journey.latestText} onChange={event => setJourney(value => ({ ...value, latestText: event.target.value }))} /></label><label className="wide">PARTNER<Input value={journey.sponsorName} onChange={event => setJourney(value => ({ ...value, sponsorName: event.target.value }))} /></label></div><p className="from-phone">Your position, town, distance, day, battery, signal and altitude all arrive from the tracking app. The walk switches itself to live on the start date.</p><Button className="admin-save-mobile" onClick={saveJourney}>Publish journey update</Button>
+    <TabsContent value="journey" className="admin-panel">
+        <div className="admin-heading"><div><h2>The walk right now</h2><p>Read this to check the tracking is alive. The only thing to set is what you are doing.</p></div></div>
+
+        {/* Four facts, all from his phone. This is the "is it working?" glance,
+            and the last-heard time is the one that matters: everything else on
+            the site is downstream of a phone that is still reporting. */}
+        <div className="progress-strip">
+          <div><small>WHERE</small><strong>{journey.currentPlace || "Nothing yet"}</strong></div>
+          <div><small>WALKED</small><strong>{Math.round(journey.distanceTotal).toLocaleString("en-IN")} km</strong></div>
+          <div><small>NEXT STOP</small><strong>{route.stops.find(stop => stop.km > (journey.routeProgressKm ?? 0))?.name ?? "Finished"}</strong></div>
+          <div><small>PHONE LAST REPORTED</small><strong className={heardAgo !== null && heardAgo > 720 ? "off" : ""}>{heardAgo === null ? "Never" : heardAgo < 60 ? `${heardAgo} min ago` : heardAgo < 2880 ? `${Math.round(heardAgo / 60)} hours ago` : `${Math.round(heardAgo / 1440)} days ago`}</strong></div>
+        </div>
+
+        {/* The one thing his phone cannot work out. One tap, and it publishes. */}
+        <div className="status-presets">{["Walking", "Resting", "Eating", "Sleeping", "Filming", "Need help"].map(value =>
+          <button className={journey.status === value ? "active" : ""} key={value} onClick={() => saveStatus(value)}>{value}</button>)}</div>
+
+        <p className="from-phone">Your town, distance, day, pace, next stop, battery and signal all come from the tracking app, and the totals are recounted from it every quarter of an hour. The walk switches itself to live on {route.startDate}.</p>
       </TabsContent>
+
       <TabsContent value="plan" className="admin-panel"><div className="admin-heading"><div><h2>Before the first step</h2><p>The run-up on the homepage, counting itself down. The last date is the day the walk starts — change it and every arrival date on the route moves with it.</p></div><Button onClick={savePlan}>Publish the plan</Button></div><div className="route-controls"><Button variant="outline" onClick={() => setPlan(current => [...current, { date: current.at(-1)?.date ?? route.startDate, title: "New step", detail: "" }])}><Plus /> Add a step</Button></div><div className="route-editor">{plan.map((step, index) => <article key={index}><header><b>{String(index + 1).padStart(2, "0")}{index === plan.length - 1 ? " · THE FIRST STEP" : ""}</b><div><Button size="icon" variant="ghost" disabled={plan.length <= 1} onClick={() => setPlan(current => current.filter((_, stepIndex) => stepIndex !== index))}><Trash2 /></Button></div></header><div><label>DATE<Input type="date" value={step.date} onChange={event => editPlan(index, "date", event.target.value)} /></label><label>TITLE<Input value={step.title} onChange={event => editPlan(index, "title", event.target.value)} /></label><label className="wide">WHAT HAPPENS<Input value={step.detail} onChange={event => editPlan(index, "detail", event.target.value)} /></label></div></article>)}</div><Button className="admin-save-mobile" onClick={savePlan}>Publish the plan</Button>
       </TabsContent>
 

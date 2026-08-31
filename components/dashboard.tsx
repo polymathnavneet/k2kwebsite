@@ -112,7 +112,7 @@ export function Dashboard() {
         <article><small>WHERE</small><strong>{fix ? `Navneet is in ${journey.currentPlace}` : "Position not sent yet"}</strong></article>
         <article><small>STATUS</small><strong>{journey.status}</strong></article>
         <article><small>SIGNAL</small><strong>{journey.connectivity}</strong></article>
-        <article><small>LAST SLEPT</small><strong>{journey.lastSleep}</strong></article>
+        <article><small>PHONE</small><strong>{journey.battery == null ? "—" : `${journey.battery}%`}</strong></article>
       </section>
 
       <section className="field-grid shell">
