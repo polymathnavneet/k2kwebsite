@@ -46,3 +46,6 @@ next-env.d.ts
 
 # generated at deploy time, never committed
 /.deploy.wrangler.json
+
+# Local development only. Never committed.
+.dev.vars
