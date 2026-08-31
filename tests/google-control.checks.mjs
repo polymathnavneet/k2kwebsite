@@ -48,3 +48,33 @@ for (const [url, expected] of [
   ["not a link at all", ""],
 ]) assert.equal(fileId(url), expected, url);
 console.log("  links     edit links, share links, published links and rubbish");
+
+// --- the document alone must be able to run the site ----------------------
+// The spreadsheet version was unusable on a phone: setting names, dates and
+// paragraphs of instruction stacked in one column. A heading with a line under
+// it is how Navneet already writes, so everything moved to that shape.
+{
+  const doc = parseSections([
+    "Instructions nobody should see on the site.",
+    "## status",
+    "Walking",
+    "## pace",
+    "27",
+    "## before-the-walk",
+    "2026-09-30 | Rucksack and tent | Bought in the sale",
+    "2026-12-17 | The first step | Vivekananda Rock",
+    "## home-note",
+    "A line for the front page.",
+  ].join("\n"));
+
+  assert.equal(doc.get("status"), "Walking");
+  assert.equal(doc.get("pace"), "27");
+  assert.equal(doc.get("home-note"), "A line for the front page.");
+
+  const steps = doc.get("before-the-walk").split("\n")
+    .map(line => line.split("|").map(part => part.trim()))
+    .filter(parts => /^\d{4}-\d{2}-\d{2}$/.test(parts[0]));
+  assert.equal(steps.length, 2, "both dated lines are steps");
+  assert.deepEqual(steps[1], ["2026-12-17", "The first step", "Vivekananda Rock"]);
+  console.log("  one doc   settings, the run-up and page text all from headings");
+}
