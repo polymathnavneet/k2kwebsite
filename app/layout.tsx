@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Offline } from "@/components/offline";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
+import "./bugfixes.css";
 
 export const metadata: Metadata = {
   title: {

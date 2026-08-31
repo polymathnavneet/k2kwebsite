@@ -1,0 +1,148 @@
+/* Screenshot bug fixes. Kept separate from the large base stylesheet so each
+   correction can be reviewed without disturbing the original design system. */
+
+/* 01 · The live location belongs in a quiet bottom-right card, not in a second
+   sticky bar under the navigation. */
+.live-pin{
+  position:fixed;
+  top:auto;
+  right:14px;
+  bottom:calc(78px + env(safe-area-inset-bottom));
+  left:auto;
+  z-index:46;
+  width:min(360px,calc(100vw - 28px));
+  min-height:0;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:start;
+  gap:4px 9px;
+  padding:12px 13px;
+  border:1px solid var(--ink);
+  border-radius:0;
+  box-shadow:5px 5px 0 rgba(8,9,8,.28);
+}
+.live-pin-dot{grid-row:1 / span 2;margin-top:4px}
+.live-pin-where{min-width:0;line-height:1.35}
+.live-pin-next{grid-column:2;margin-left:0;display:block;line-height:1.35}
+.live-pin-next b{display:inline;margin-right:7px}
+
+/* 05 · Leaflet's internal panes use high z-index values. Contain them inside
+   the map so they cannot paint over the text above or below while scrolling. */
+.live-map,
+.route-live-grid>.live-map{
+  overflow:hidden;
+  isolation:isolate;
+  z-index:0;
+  contain:paint;
+}
+.route-live-grid,.dynamic-route,.page-hero{position:relative}
+.dynamic-route,.page-hero{z-index:1}
+.live-map-canvas,.leaflet-container{max-width:100%;max-height:100%}
+
+/* 06 · The route is now a record, with a forecast visibly separated from it. */
+.route-forecast{
+  display:grid;
+  gap:4px;
+  border:1px solid var(--ink);
+  background:#fff;
+  padding:14px 16px;
+  margin:0 0 34px;
+}
+.route-forecast small,.route-recorded-tag{font-size:11px;font-weight:900;letter-spacing:.11em;color:var(--red-ink)}
+.route-forecast b{font-size:25px;line-height:1.05}
+.route-forecast span{font-size:12px;opacity:.72}
+.route-recorded-tag{margin-bottom:10px}
+.route-empty{padding:28px 0;border-bottom:1px solid var(--ink)}
+.route-empty b{font-size:20px}
+.route-empty p{margin:5px 0 0;opacity:.7}
+.current-road-place h2{overflow-wrap:anywhere}
+
+/* 08 · The book form really is only two fields now. */
+.book-form-minimal{align-content:start}
+.book-form-minimal .primary-button{margin-top:2px}
+
+/* 09 · Games need to be playable on an ordinary laptop, not merely visible if
+   someone squints at one-pixel borders. */
+.games [data-slot="tabs-list"],
+.route-buttons button,
+.memory-grid button,
+.sprint-board p,
+.step-button,
+.games .primary-button{
+  border-width:2px;
+}
+.games [data-slot="tabs-trigger"]{font-size:12px;font-weight:900;min-height:46px}
+.route-buttons button{
+  min-height:44px;
+  padding:10px 13px;
+  font-size:14px;
+  color:var(--ink);
+  background:#fff;
+}
+.route-buttons button.correct{background:#6fc95c;color:#101410}
+.route-buttons button:disabled{opacity:1}
+.memory-grid button{
+  min-height:72px;
+  font-size:14px;
+  line-height:1.15;
+}
+.memory-grid button.open{background:#fff;color:var(--ink)}
+.memory-grid button:focus-visible,
+.route-buttons button:focus-visible,
+.step-button:focus-visible,
+.games .primary-button:focus-visible{
+  outline:4px solid var(--red);
+  outline-offset:3px;
+}
+
+/* 10-11 · One lightweight player identity and real database leaderboards. */
+.game-player{
+  display:grid;
+  gap:8px;
+  max-width:560px;
+  margin:0 0 22px;
+  padding:14px;
+  border:2px solid var(--ink);
+  background:#fff;
+}
+.game-player label{font-size:11px;font-weight:900;letter-spacing:.1em}
+.game-player input{
+  width:100%;
+  min-height:44px;
+  margin-top:6px;
+  border:2px solid var(--ink);
+  background:var(--paper);
+  padding:8px 10px;
+  font:inherit;
+  font-size:16px;
+}
+.game-player span{font-size:12px;line-height:1.45;opacity:.72}
+.game-leaderboard{margin-top:26px;border:2px solid var(--ink);background:#fff}
+.game-leaderboard-head{display:flex;justify-content:space-between;gap:12px;padding:11px 12px;border-bottom:2px solid var(--ink);font-size:11px}
+.game-leaderboard-head span{font-weight:900}
+.game-leaderboard ol{list-style:none;margin:0;padding:0}
+.game-leaderboard li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 11px;border-bottom:1px solid var(--ink);font-size:13px}
+.game-leaderboard li:last-child{border-bottom:0}
+.game-leaderboard li>b{color:var(--red-ink)}
+.game-leaderboard li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.game-leaderboard li strong{font-variant-numeric:tabular-nums}
+.game-leaderboard>p{padding:12px;margin:0;font-size:12px}
+
+/* 12 · Long messages/links must wrap inside the desktop grid instead of making
+   the whole /messages page lean sideways with horizontal overflow. */
+.message-list,.message-card,.message-card>div{min-width:0;max-width:100%}
+.message-card p,.message-card a,.follow-up-thread,.follow-up-action{overflow-wrap:anywhere;word-break:break-word}
+.message-card img,.message-card video{max-width:100%;height:auto}
+@media(min-width:700px){
+  .message-card{grid-template-columns:minmax(120px,145px) minmax(0,1fr);width:100%}
+}
+
+@media(min-width:700px){
+  .live-pin{
+    top:auto;
+    right:22px;
+    bottom:22px;
+    width:min(390px,calc(100vw - 44px));
+    padding:13px 15px;
+  }
+}
