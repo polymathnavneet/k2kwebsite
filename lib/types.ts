@@ -14,6 +14,17 @@ export type GpsTrailPoint = {
   countedKm?: number;
 };
 
+export type GpsTrailPlace = {
+  name: string;
+  state: string;
+  lat: number;
+  lon: number;
+  firstSeen: string;
+  lastSeen: string;
+  sightings: number;
+  distanceKm: number;
+};
+
 export type WalkRoute = {
   title: string;
   startDate: string;
