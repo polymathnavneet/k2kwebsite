@@ -107,6 +107,9 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
   // of the start date it begins counting by itself, with nothing to remember.
   const started = dayOfWalk(startDate) >= 1;
   const live = previous.mode === "live" && started;
+  // And the walk announces itself. On the morning of the start date the mode
+  // flips on the first position of the day, so nobody has to remember to.
+  const becomesLive = started && previous.mode !== "live";
   const previousAlong = Number(previous.routeProgressKm) || 0;
 
   // Oldest first, so the walk is replayed in the order it happened.
@@ -180,7 +183,7 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
     ? stops.filter(stop => stop.km > previousAlong && stop.km <= progressKm).map(stop => stop.name)
     : [];
 
-  const day = live ? dayOfWalk(startDate) : previous.day;
+  const day = started ? dayOfWalk(startDate) : previous.day;
   const sameDay = day === previous.day;
   const distanceTotal = Math.round((previous.distanceTotal + walked) * 10) / 10;
   const distanceToday = Math.round(((sameDay ? previous.distanceToday : 0) + walked) * 10) / 10;
@@ -210,6 +213,9 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
     routeProgressKm: Math.min(10000, Math.max(0, progressKm)),
     offRouteKm: Math.min(2000, Math.max(0, offRouteKm)),
     currentPlace,
+    // The walk announces itself on the morning of the start date rather than
+    // waiting for somebody to remember a dropdown.
+    ...(becomesLive ? { mode: "live" as const } : {}),
     updatedAt: new Date().toISOString(),
   };
 
