@@ -4,14 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { RouteMap } from "./route-map";
 import type { GpsTrailPoint, Journey, RouteStop } from "@/lib/types";
 
-/**
- * A real, movable map whose public line is the GPS evidence trail.
- *
- * Planned roads are intentionally not drawn. Navneet can take whichever lane,
- * detour or city he actually walks through; the map follows the recording and
- * nothing else gets to compete with it.
- */
-
 type LeafletMap = {
   setView: (centre: [number, number], zoom: number) => LeafletMap;
   fitBounds: (bounds: unknown, options?: unknown) => void;
@@ -26,12 +18,17 @@ type LeafletMap = {
   getZoom: () => number;
 };
 
+type LeafletLayerItem = {
+  addTo: (layer: unknown) => void;
+  bindPopup: (html: string) => unknown;
+};
+
 type Leaflet = {
   map: (element: HTMLElement, options?: unknown) => LeafletMap;
   tileLayer: (url: string, options?: unknown) => { addTo: (map: unknown) => void };
   polyline: (points: [number, number][], options?: unknown) => { addTo: (layer: unknown) => void };
-  circleMarker: (point: [number, number], options?: unknown) => { addTo: (layer: unknown) => void; bindPopup: (html: string) => unknown };
-  marker: (point: [number, number], options?: unknown) => { addTo: (layer: unknown) => void; bindPopup: (html: string) => unknown };
+  circleMarker: (point: [number, number], options?: unknown) => LeafletLayerItem;
+  marker: (point: [number, number], options?: unknown) => LeafletLayerItem;
   divIcon: (options: unknown) => unknown;
   layerGroup: () => { addTo: (map: unknown) => void; clearLayers: () => void };
   latLngBounds: (points: [number, number][]) => { pad: (amount: number) => unknown };
@@ -39,7 +36,6 @@ type Leaflet = {
 
 const INDIA: [number, number][] = [[6.4, 67.8], [35.9, 97.6]];
 const CDN = "https://unpkg.com/leaflet@1.9.4/dist";
-
 let loading: Promise<Leaflet | null> | null = null;
 
 function loadLeaflet(): Promise<Leaflet | null> {
@@ -91,19 +87,14 @@ export function LiveMap({ stops, journey, trail = [], compact = false, active = 
       leafletRef.current = L;
       const map = L.map(holder.current, { dragging: false, scrollWheelZoom: false, zoomControl: false });
       map.setView([journey.lat, journey.lon], active ? 8 : 6);
-
-      // CARTO's international basemap uses Latin/English labels far more
-      // consistently than the default local-language raster tiles. The data is
-      // still OpenStreetMap; only the label styling changes.
+      // International/Latin label styling avoids the surrounding map suddenly
+      // switching scripts while the walk itself is in India.
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
         maxZoom: 19,
         attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
       }).addTo(map);
-
       layerRef.current = L.layerGroup();
       layerRef.current.addTo(map);
-      // Keep the useful context around India without allowing a stray gesture
-      // to turn the page into a map of half of Asia.
       map.setMaxBounds(L.latLngBounds(INDIA).pad(0.15));
       mapRef.current = map;
       setReady(true);
@@ -119,7 +110,6 @@ export function LiveMap({ stops, journey, trail = [], compact = false, active = 
       ? new ResizeObserver(() => { if (!touchedRef.current) frameRef.current?.(); })
       : null;
     if (observer && holderNow) observer.observe(holderNow);
-
     const giveUp = setTimeout(() => setHinted(true), 9000);
 
     return () => {
@@ -134,9 +124,6 @@ export function LiveMap({ stops, journey, trail = [], compact = false, active = 
     };
   }, [compact]);
 
-  // Redraw only from the evidence trail. Route stops remain available to the
-  // rest of the site for forecasts, but they never draw a second "should have
-  // walked" line on top of what actually happened.
   useEffect(() => {
     const L = leafletRef.current;
     const map = mapRef.current;
@@ -144,25 +131,17 @@ export function LiveMap({ stops, journey, trail = [], compact = false, active = 
     if (!ready || !L || !map || !layer) return;
 
     layer.clearLayers();
-
     const actual = active
-      ? trail
-          .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon))
-          .map(point => [point.lat, point.lon] as [number, number])
+      ? trail.filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon)).map(point => [point.lat, point.lon] as [number, number])
       : [];
 
-    if (actual.length > 1) {
-      L.polyline(actual, { color: "#e54a2a", weight: 5, opacity: .95 }).addTo(layer);
-    }
-
+    // There is deliberately no planned polyline. The only line is where the
+    // accepted GPS fixes say Navneet actually walked.
+    if (actual.length > 1) L.polyline(actual, { color: "#e54a2a", weight: 5, opacity: .95 }).addTo(layer);
     if (actual.length) {
-      L.circleMarker(actual[0], {
-        radius: 5,
-        color: "#151716",
-        weight: 2,
-        fillColor: "#e54a2a",
-        fillOpacity: 1,
-      }).addTo(layer).bindPopup("<strong>First recorded step</strong>");
+      const first = L.circleMarker(actual[0], { radius: 5, color: "#151716", weight: 2, fillColor: "#e54a2a", fillOpacity: 1 });
+      first.addTo(layer);
+      first.bindPopup("<strong>First recorded step</strong>");
     }
 
     const here = L.marker([journey.lat, journey.lon], {
@@ -190,7 +169,6 @@ export function LiveMap({ stops, journey, trail = [], compact = false, active = 
   if (failed) return <RouteMap stops={stops} journey={journey} trail={trail} compact={compact} active={active} />;
 
   const hold = () => { touchedRef.current = true; setHinted(true); };
-
   function engage() {
     hold();
     setEngaged(true);
@@ -202,26 +180,12 @@ export function LiveMap({ stops, journey, trail = [], compact = false, active = 
     <div className={compact ? "live-map compact" : "live-map"}>
       <div ref={holder} className="live-map-canvas" />
       {!ready && <div className="live-map-loading">Loading the map…</div>}
-      {ready && !engaged && !compact && (
-        <button className="map-engage" type="button" onClick={engage}>
-          <span>Tap to move the map</span>
-        </button>
-      )}
+      {ready && !engaged && !compact && <button className="map-engage" type="button" onClick={engage}><span>Tap to move the map</span></button>}
       <div className="map-controls">
         <button type="button" aria-label="Zoom in" onClick={() => { hold(); mapRef.current?.zoomIn(); }}>+</button>
         <button type="button" aria-label="Zoom out" onClick={() => { hold(); mapRef.current?.zoomOut(); }}>−</button>
-        <button
-          className="locate-button"
-          type="button"
-          aria-label="Centre on Navneet"
-          onClick={() => { hold(); mapRef.current?.setView([journey.lat, journey.lon], 11); }}
-        >⌖</button>
-        {!hinted && (
-          <p className="map-hint" aria-hidden="true">
-            <span className="on-touch">Pinch to zoom</span>
-            <span className="on-pointer">Use + and −</span>
-          </p>
-        )}
+        <button className="locate-button" type="button" aria-label="Centre on Navneet" onClick={() => { hold(); mapRef.current?.setView([journey.lat, journey.lon], 11); }}>⌖</button>
+        {!hinted && <p className="map-hint" aria-hidden="true"><span className="on-touch">Pinch to zoom</span><span className="on-pointer">Use + and −</span></p>}
       </div>
     </div>
   );
