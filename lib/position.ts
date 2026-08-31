@@ -58,12 +58,26 @@ export function predictNext(stops: RouteStop[], journey: Journey) {
   if (!positioned(journey) || !Array.isArray(stops) || stops.length < 2) return null;
   const projected = projectOntoRoute(stops, journey.lat, journey.lon);
   if (!projected) return null;
-  const next = nextStopAfter(stops, projected.alongKm);
+  let next = nextStopAfter(stops, projected.alongKm);
+
+  // A projection can land a few kilometres before the centre point of the
+  // town the phone is already in. That made Lucknow read "Next: Lucknow ·
+  // 10 km". Reverse geocoding has already told us the current town, so when
+  // that town and the projected next stop are the same, move on to the stop
+  // after it. The GPS still decides where he is; this only stops the route
+  // label contradicting it.
+  const currentTown = journey.currentPlace.split(",")[0]?.trim().toLocaleLowerCase("en-IN") ?? "";
+  if (next && currentTown && next.name.trim().toLocaleLowerCase("en-IN") === currentTown) {
+    const currentIndex = stops.indexOf(next);
+    next = stops.slice(currentIndex + 1).find(stop => stop.km > projected.alongKm) ?? null;
+  }
+
+  const destination = next ?? stops[stops.length - 1];
   return {
     alongKm: projected.alongKm,
     offRouteKm: projected.offRouteKm,
-    next: next ?? stops[stops.length - 1],
-    toNextKm: Math.max(0, (next ?? stops[stops.length - 1]).km - projected.alongKm),
+    next: destination,
+    toNextKm: Math.max(0, destination.km - projected.alongKm),
     // Far enough off the line that the answer deserves saying so out loud.
     strayed: projected.offRouteKm > OFF_ROUTE_KM,
   };
@@ -83,7 +97,7 @@ export function predictNext(stops: RouteStop[], journey: Journey) {
  * moves to the past tense and the age is shown, so a reader can tell the
  * difference between where he is and where he was.
  */
-export const FRESH_HOURS = 3;
+export const FRESH_HOURS = 24;
 
 export function lastHeard(journey: Journey, now = Date.now()) {
   if (!journey.updatedAt) return null;
@@ -94,6 +108,10 @@ export function lastHeard(journey: Journey, now = Date.now()) {
   return {
     minutes,
     fresh: minutes < FRESH_HOURS * 60,
+    // Significant Changes mode is intentionally quiet while the phone has not
+    // moved far enough. A few silent hours therefore means "watching", not
+    // "broken". After a full day without a fix the wording becomes a warning.
+    watching: minutes >= 30 && minutes < FRESH_HOURS * 60,
     /** "22 minutes ago", "6 hours ago", "2 days ago". */
     phrase: minutes < 2 ? "just now"
       : minutes < 60 ? `${minutes} minutes ago`

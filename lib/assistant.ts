@@ -144,6 +144,24 @@ export async function buildAsks(db: Db): Promise<{ asks: Ask[]; summary: string;
     });
   }
 
+  const unansweredFollowUps = await db
+    .select({ id: messages.id, name: messages.name, followUp: messages.followUp })
+    .from(messages)
+    .where(and(ne(messages.followUp, ""), eq(messages.followUpReply, ""), ne(messages.status, "hidden")))
+    .orderBy(desc(messages.followUpAt))
+    .limit(3);
+  for (const row of unansweredFollowUps) {
+    asks.push({
+      id: `follow-up-reply:${row.id}`,
+      kind: "follow-up-reply",
+      priority: 82,
+      question: `${row.name} asked one follow-up. Reply?`,
+      detail: row.followUp.length > 220 ? `${row.followUp.slice(0, 220)}…` : row.followUp,
+      input: "text",
+      context: { messageId: row.id, name: row.name },
+    });
+  }
+
   /* ------------------------------------------------------ how was your day */
   const today = istDayKey();
   const [todayEntry] = await db.select({ id: journalEntries.id }).from(journalEntries).where(eq(journalEntries.day, today)).limit(1);
@@ -161,18 +179,6 @@ export async function buildAsks(db: Db): Promise<{ asks: Ask[]; summary: string;
       // his thumb instead of buried under options he has never used.
       taps: orderByUse(tapsForMode(state.mode).flatMap(group => group.options), memory.taps).slice(0, 12),
       context: { day: today },
-    });
-  }
-
-  /* ------------------------------------------------------ how far did you go */
-  if (live && state.distanceToday === 0 && fixAgeHours !== null && fixAgeHours < 20) {
-    asks.push({
-      id: "distance",
-      kind: "distance",
-      priority: 60,
-      question: "How far did you walk today?",
-      detail: "The GPS has not recorded any distance today. If you walked without it, say how far.",
-      input: "number",
     });
   }
 
@@ -209,7 +215,7 @@ export async function buildAsks(db: Db): Promise<{ asks: Ask[]; summary: string;
     day: dueDay,
     place: state.currentPlace,
     fixAgeHours,
-    waiting: unanswered.length,
+    waiting: unanswered.length + unansweredFollowUps.length,
     daysSinceEntry,
     todayKm: state.distanceToday,
   };

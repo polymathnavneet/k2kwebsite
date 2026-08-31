@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { messages } from "@/db/schema";
 import { mirrorMessages } from "@/lib/mirror";
@@ -31,14 +31,19 @@ export async function GET(request: Request) {
       message: messages.message,
       status: messages.status,
       reply: messages.reply,
+      followUp: messages.followUp,
+      followUpReply: messages.followUpReply,
       createdAt: messages.createdAt,
       repliedAt: messages.repliedAt,
+      followUpAt: messages.followUpAt,
+      followUpRepliedAt: messages.followUpRepliedAt,
+      canFollowUp: messages.contact,
     })
     .from(messages)
     .where(eq(messages.status, "public"))
     .orderBy(desc(messages.createdAt))
     .limit(200);
-  return Response.json({ rows });
+  return Response.json({ rows: rows.map(row => ({ ...row, canFollowUp: Boolean(row.canFollowUp) })) });
 }
 
 export async function POST(request: Request) {
@@ -51,18 +56,52 @@ export async function POST(request: Request) {
   }
 
   if (body.action) {
+    const requestedAction = clean(body.action, 30);
+
+    // The person who asked may ask exactly once more, after Navneet has
+    // answered. Their original private contact acts as the key; it is checked
+    // here and never sent to the public page.
+    if (requestedAction === "follow-up") {
+      const id = clean(body.id, 80);
+      const contact = clean(body.contact, 160);
+      const followUp = publicText(body.followUp);
+      if (!id || contact.length < 5 || followUp.length < 8) {
+        return Response.json({ error: "Use the same private contact and write a little more." }, { status: 400 });
+      }
+      const [row] = await db.select().from(messages).where(eq(messages.id, id)).limit(1);
+      const normalizeContact = (value: string) => value.trim().toLocaleLowerCase("en-IN").replace(/[\s()-]/g, "");
+      if (!row || row.type !== "question" || row.status !== "public" || !row.reply || row.followUp || !row.contact
+        || normalizeContact(row.contact) !== normalizeContact(contact)) {
+        return Response.json({ error: "That follow-up could not be added. Use the same contact you used for the first question." }, { status: 403 });
+      }
+      const followUpAt = new Date().toISOString();
+      const saved = await db.update(messages)
+        .set({ followUp, followUpAt })
+        .where(and(eq(messages.id, id), eq(messages.followUp, "")))
+        .returning({ id: messages.id });
+      if (!saved.length) return Response.json({ error: "That question already has its one follow-up." }, { status: 409 });
+      await mirrorMessages(db);
+      return Response.json({ ok: true, followUp, followUpAt });
+    }
+
     const admin = isAdmin(request);
     // Replying in public is the one thing the daily check-in may do here.
     // Hiding a message and putting one on the wall stay with the passcode.
     const assistant = isAssistant(request);
     if (!admin && !assistant) return Response.json({ error: "Unauthorized" }, { status: 401 });
     const id = clean(body.id, 80);
-    const action = clean(body.action, 20);
-    if (!admin && action !== "reply") return Response.json({ error: "That needs the admin passcode." }, { status: 403 });
+    const action = requestedAction;
+    if (!admin && action !== "reply" && action !== "follow-up-reply") return Response.json({ error: "That needs the admin passcode." }, { status: 403 });
     if (action === "reply") {
       const reply = publicText(body.reply);
       if (!reply) return Response.json({ error: "Write a reply first" }, { status: 400 });
       await db.update(messages).set({ reply, status: "public", repliedAt: new Date().toISOString() }).where(eq(messages.id, id));
+    } else if (action === "follow-up-reply") {
+      const reply = publicText(body.reply);
+      if (!reply) return Response.json({ error: "Write a follow-up reply first" }, { status: 400 });
+      const [row] = await db.select({ followUp: messages.followUp }).from(messages).where(eq(messages.id, id)).limit(1);
+      if (!row?.followUp) return Response.json({ error: "There is no follow-up to answer." }, { status: 400 });
+      await db.update(messages).set({ followUpReply: reply, status: "public", followUpRepliedAt: new Date().toISOString() }).where(eq(messages.id, id));
     } else if (action === "publish") {
       await db.update(messages).set({ status: "public" }).where(eq(messages.id, id));
     } else if (action === "hide") {
@@ -83,7 +122,7 @@ export async function POST(request: Request) {
   // "walk" is somebody offering to walk a stretch of it with him. It goes on
   // the wall like the rest: the whole point is that other people can see the
   // road filling up with company.
-  const allowed = ["place", "story", "support", "question", "walk", "sponsor"];
+  const allowed = ["place", "story", "support", "road", "question", "walk", "sponsor"];
   const type = allowed.includes(String(body.type)) ? String(body.type) : "question";
   const name = clean(body.name, 60);
   const contact = clean(body.contact, 160);

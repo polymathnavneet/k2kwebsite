@@ -21,7 +21,6 @@ function asksFor(state) {
   for (let i = 0; i < state.pendingSuggestions; i += 1) asks.push({ kind: "suggestion", priority: 90 });
   for (let i = 0; i < state.unanswered; i += 1) asks.push({ kind: "reply", priority: 80 });
   if (!state.wroteToday) asks.push({ kind: "journal", priority: 70 });
-  if (live && state.distanceToday === 0 && state.fixAgeHours !== null && state.fixAgeHours < 20) asks.push({ kind: "distance", priority: 60 });
   if (state.mediaCount === 0) asks.push({ kind: "media", priority: 40 });
 
   asks.sort((a, b) => b.priority - a.priority);
@@ -49,12 +48,12 @@ assert.equal(stale[0], "gps", "a four-day-old position is the most urgent thing"
 assert.deepEqual(stale, ["gps", "reply", "reply", "journal"], "then the people waiting, then the day");
 console.log("✓ a four-day-old position is asked first, then unanswered people, then the day");
 
-// --- it does not nag about distance when the GPS already knows ---------------
+// --- it never asks for an unverifiable distance ------------------------------
 const walked = asksFor({ ...base, mode: "live", now: new Date("2027-01-10T09:00:00Z"), distanceToday: 22 });
 assert.ok(!walked.includes("distance"), "if the GPS recorded distance, do not ask for it");
 const nothingRecorded = asksFor({ ...base, mode: "live", now: new Date("2027-01-10T09:00:00Z"), distanceToday: 0, fixAgeHours: 3 });
-assert.ok(nothingRecorded.includes("distance"), "a fresh fix but no distance is worth asking about");
-console.log("✓ it asks how far you walked only when the GPS did not see it");
+assert.ok(!nothingRecorded.includes("distance"), "zero GPS distance must not become a typed claim");
+console.log("✓ it never asks for a distance that was not recorded by GPS");
 
 // --- and not for a position it has just been given ---------------------------
 const justSynced = asksFor({ ...base, mode: "live", now: new Date("2027-01-10T09:00:00Z"), fixAgeHours: 0.2, distanceToday: 12 });

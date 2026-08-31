@@ -54,7 +54,7 @@ export function DayByDay() {
   if (days !== null && days.length === 0) {
     return (
       <section className="day-by-day shell">
-        <div className="section-tag warm">03 · DAY BY DAY</div>
+        <div className="section-tag warm">THE WALK, DAY BY DAY</div>
         <h2>Nothing walked yet.</h2>
         <p className="day-empty">Every day of the walk will appear here as it happens, measured from the tracker on his phone rather than typed in afterwards.</p>
       </section>
@@ -67,7 +67,7 @@ export function DayByDay() {
     <section className="day-by-day shell">
       <div className="day-head">
         <div>
-          <div className="section-tag warm">03 · DAY BY DAY</div>
+          <div className="section-tag warm">THE WALK, DAY BY DAY</div>
           <h2>Every day,<br />as it happened.</h2>
         </div>
         {summary && <dl className="day-summary">

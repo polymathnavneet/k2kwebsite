@@ -34,8 +34,8 @@ const exact = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 export function LivePin() {
   const { journey, route } = useLiveJourney();
   const fix = positioned(journey);
-  const ahead = predictNext(route.stops, journey);
   const live = journey.mode === "live" && walkDay(route.startDate) >= 1;
+  const ahead = live ? predictNext(route.stops, journey) : null;
 
   // Read from the clock in an effect rather than during render: rendering has
   // to give the same answer twice, and Date.now() does not. The first reading
@@ -56,13 +56,16 @@ export function LivePin() {
       <span className="live-pin-dot" aria-hidden="true" />
       <span className="live-pin-where">
         {!fix ? "Waiting for the first position"
-          : stale ? `Navneet was in ${journey.currentPlace}`
+          : stale ? `Last known: ${journey.currentPlace}`
           : `Navneet is in ${journey.currentPlace}`}
-        {stale && heard && <em> · {heard.phrase}</em>}
+        {heard?.watching && <em> · GPS watching for movement</em>}
+        {stale && heard && <em> · last fix {heard.phrase}</em>}
       </span>
       <span className="live-pin-next">
         {live && <b>{exact.format(journey.distanceToday)} km today</b>}
-        {ahead && `Next: ${ahead.next.name} · ${number.format(ahead.toNextKm)} km`}
+        {live && ahead
+          ? `Next: ${ahead.next.name} · ${number.format(ahead.toNextKm)} km`
+          : `Walk starts: ${route.stops[0]?.name ?? "Kanyakumari"}`}
       </span>
     </Link>
   );

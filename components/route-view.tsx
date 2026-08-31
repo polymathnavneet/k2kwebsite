@@ -16,8 +16,9 @@ export function RouteView() {
     // Which town is next follows the position, not a flag somebody has to
     // remember to set in the admin panel, and not the stored progress figure
     // either. See predictNext in lib/position.ts.
-    const ahead = predictNext(route.stops, journey);
-    const live = Boolean(ahead);
+    const started = dayOfWalk(route.startDate) >= 1;
+    const live = journey.mode === "live" && started;
+    const ahead = live ? predictNext(route.stops, journey) : null;
     // Count the day from the calendar rather than a typed-in number, so the
     // pace is right even when a field update gets missed.
     const day = live ? Math.max(journey.day, dayOfWalk(route.startDate)) : 0;
@@ -50,7 +51,7 @@ export function RouteView() {
 
   return <>
     <section className="route-live-grid shell">
-      <LiveMap stops={route.stops} journey={journey} />
+      <LiveMap stops={route.stops} journey={journey} active={estimate.live} />
       <div className="route-summary">
         <article><small>{estimate.live ? "WALKED" : "WORKING DISTANCE"}</small><strong>{estimate.live ? `${estimate.walked.toLocaleString("en-IN")} / ${route.totalDistance.toLocaleString("en-IN")} km` : `${route.totalDistance.toLocaleString("en-IN")} km`}</strong></article>
         <article><small>{estimate.live ? "LIVE PACE" : "PLANNED PACE"}</small><strong>{estimate.pace.toFixed(1)} km/day</strong></article>

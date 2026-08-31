@@ -1,31 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Check, Share2 } from "lucide-react";
+import { useMemo } from "react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, livePace } from "@/lib/geo";
 import { predictNext } from "@/lib/position";
 import { formatWalkDate, istNoon, walkDay } from "@/lib/time";
 import { LiveMap } from "./live-map";
-import { RightNow } from "./right-now";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 const formatIso = (date: Date) => new Date(date.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 
 export function Dashboard() {
   const { journey, route } = useLiveJourney();
-  const [notice, setNotice] = useState("");
-  // Every cheer used to be posted into silence: the server counted it into a
-  // row no page read, so the button said "Your cheer reached the road" and the
-  // road never heard. The count comes back now and goes on the button, so a
-  // tap visibly joins something.
-  const [cheers, setCheers] = useState<{ cheer: number; follow: number } | null>(null);
-  useEffect(() => {
-    fetch("/api/reactions")
-      .then(response => response.json())
-      .then(data => setCheers(data.today ?? null))
-      .catch(() => {});
-  }, []);
 
   // Two separate questions, and conflating them is what made the tracker lie.
   //
@@ -49,7 +35,11 @@ export function Dashboard() {
   const walkedToday = started ? journey.distanceToday : 0;
   // Worked out from the position every time, not from the stored progress
   // figure, which is only written when GPS is processed and goes stale between.
-  const ahead = useMemo(() => predictNext(route.stops, journey), [route, journey]);
+  // A preparation location is not progress on the expedition. Projecting a
+  // phone in Lucknow onto December's route was why the page claimed Lucknow
+  // was the next stop. Until day one, the only honest route destination is the
+  // starting point: Kanyakumari.
+  const ahead = useMemo(() => live ? predictNext(route.stops, journey) : null, [live, route, journey]);
   const along = ahead?.alongKm ?? 0;
   const next = ahead?.next ?? null;
 
@@ -70,29 +60,6 @@ export function Dashboard() {
     return Math.max(0, Math.ceil((route.totalDistance - along) / Math.max(1, pace)));
   }, [live, route, journey, along, walked]);
 
-  async function react(type: "cheer" | "follow") {
-    const key = `alw-${type}-${type === "cheer" ? new Date().toISOString().slice(0, 10) : "saved"}`;
-    if (localStorage.getItem(key)) {
-      setNotice(type === "cheer" ? "You already cheered today. Thank you!" : "A Long Walk is already saved on this phone.");
-      return;
-    }
-    localStorage.setItem(key, "1");
-    setNotice(type === "cheer" ? "Your cheer reached the road 👏" : "A Long Walk is saved on this phone.");
-    fetch("/api/reactions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type }) })
-      .then(response => response.json())
-      .then(data => { if (data?.today) setCheers(data.today); })
-      .catch(() => {});
-  }
-
-  async function share() {
-    const data = { title: "A Long Walk", text: "Follow Navneet walking from Kanyakumari to Kashmir.", url: location.href };
-    try {
-      if (navigator.share) await navigator.share(data);
-      else await navigator.clipboard.writeText(location.href);
-      setNotice("Journey link ready to share.");
-    } catch {}
-  }
-
   return (
     <>
       <section className="dashboard-hero">
@@ -100,7 +67,7 @@ export function Dashboard() {
           <div className="status-line"><span><i />{live ? "LIVE WALK" : "PREPARATION MODE"}</span><small>{journey.updatedAt ? `Updated ${new Date(journey.updatedAt).toLocaleString("en-IN")}` : "GPS begins on day one"}</small></div>
           <div><p>KANYAKUMARI → KASHMIR</p><h1>{journey.currentPlace}</h1><span>{live ? `Day ${journey.day} · ${number.format(walkedToday)} km today` : "Preparing to walk India from south to north."}</span></div>
         </div>
-        <LiveMap stops={route.stops} journey={journey} compact />
+        <LiveMap stops={route.stops} journey={journey} compact active={live} />
       </section>
 
       <section className="metric-grid" aria-label="Walk metrics">
@@ -116,27 +83,14 @@ export function Dashboard() {
           <strong className="place-metric">{ahead ? next?.name : route.stops[0]?.name}</strong>
           <span>{ahead
             ? `${number.format(ahead.toNextKm)} km up the route${ahead.strayed ? ` · ${number.format(ahead.offRouteKm)} km off the line` : ""}`
-            : "Waiting for the first position"}</span>
+            : live
+              ? "Waiting for a reliable GPS position"
+              : started
+                ? "GPS sets the next stop when the walk is live"
+                : `First step · ${formatWalkDate(istNoon(route.startDate))}`}</span>
         </article>
       </section>
 
-      {/* Steps, weather and altitude have gone: nothing fed them, so they read
-          "Awaiting data" and "—" beside figures that were real. */}
-      <section className="field-grid shell">
-        <article className="dispatch-card"><div className="section-tag">01 · LATEST FIELD SIGNAL</div><div><small>{journey.currentPlace.toUpperCase()}</small><h2>{journey.latestTitle}</h2><p>{journey.latestText}</p><a href={journey.latestUrl}>Read the dispatch →</a></div></article>
-        <RightNow />
-      </section>
-
-      <section className="response-panel shell">
-        <div><div className="section-tag">02 · SEND A SIGNAL</div><h2>Respond to the road.</h2><p>Navneet sees the day&apos;s cheers on his phone at the end of the walking. Weak-signal taps stay acknowledged here and send themselves later.</p></div>
-        <div className="response-buttons">
-          <button onClick={() => react("cheer")}><Check size={18} /> Cheer today{cheers && cheers.cheer > 0 ? <b className="tally">{number.format(cheers.cheer)}</b> : null}</button>
-          <button onClick={() => react("follow")}>＋ Follow A Long Walk</button>
-          <button onClick={share}><Share2 size={18} /> Share journey</button>
-          <a href="/games">◆ Play road games</a>
-        </div>
-        {notice && <p className="action-notice" role="status">{notice}</p>}
-      </section>
     </>
   );
 }

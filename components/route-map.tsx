@@ -33,19 +33,19 @@ function walkedPoints(stops: RouteStop[], distance: number) {
   return output.map(point => `${point.x},${point.y}`).join(" ");
 }
 
-export function RouteMap({ stops, journey, compact = false }: { stops: RouteStop[]; journey: Journey; compact?: boolean }) {
+export function RouteMap({ stops, journey, compact = false, active = false }: { stops: RouteStop[]; journey: Journey; compact?: boolean; active?: boolean }) {
   const current = project(journey.lat, journey.lon);
   return (
     <div className={compact ? "route-map compact" : "route-map"}>
       <svg viewBox="0 0 420 720" role="img" aria-label="Live route from Kanyakumari to Srinagar">
         <path className="map-grid-lines" d="M35 100H390M35 200H390M35 300H390M35 400H390M35 500H390M35 600H390M90 45V675M180 45V675M270 45V675M360 45V675" />
         <polyline className="planned-line" points={points(stops)} />
-        <polyline className="walked-line" points={walkedPoints(stops, journey.distanceTotal)} />
+        <polyline className="walked-line" points={walkedPoints(stops, active ? journey.distanceTotal : 0)} />
         {stops.map((stop, index) => {
           const point = project(stop.lat, stop.lon);
           const showLabel = index === 0 || index === stops.length - 1 || [3, 4, 5, 7, 9, 10, 11].includes(index);
           return <g key={`${stop.name}-${index}`}>
-            <circle className={stop.km <= journey.distanceTotal ? "route-dot reached" : "route-dot"} cx={point.x} cy={point.y} r={index === 0 || index === stops.length - 1 ? 6 : 3.5} />
+            <circle className={active && stop.km <= journey.distanceTotal ? "route-dot reached" : "route-dot"} cx={point.x} cy={point.y} r={index === 0 || index === stops.length - 1 ? 6 : 3.5} />
             {showLabel && <text className="route-label" x={point.x + 9} y={point.y + 4}>{stop.name.toUpperCase()}</text>}
           </g>;
         })}

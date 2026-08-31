@@ -40,6 +40,8 @@ const ROUTE = [
   { name: "Kanyakumari", lat: 8.0883, lon: 77.5385, km: 0 },
   { name: "Varanasi", lat: 25.3176, lon: 82.9739, km: 2540 },
   { name: "Sultanpur", lat: 26.2648, lon: 82.0727, km: 2705 },
+  { name: "Lucknow", lat: 26.8467, lon: 80.9462, km: 2860 },
+  { name: "Hardoi", lat: 27.42, lon: 80.13, km: 2970 },
   { name: "Srinagar", lat: 34.0837, lon: 74.7973, km: 4270 },
 ];
 const BETTIAH_FIX = { ...BETTIAH, updatedAt: "2026-08-29T15:39:41Z", offRouteKm: 218 };
@@ -50,6 +52,12 @@ assert.equal(ahead.next.name, "Sultanpur", "from Bettiah the next town up the ro
 assert.ok(ahead.strayed, "and it must admit how far off the line that was taken from");
 assert.ok(ahead.toNextKm > 0, "the distance to it is ahead, not behind");
 console.log(`  predict  Bettiah -> ${ahead.next.name}, ${Math.round(ahead.toNextKm)} km up the route, ${Math.round(ahead.offRouteKm)} km off the line`);
+
+// Being just short of a town's centre point must not make that same town the
+// next destination when reverse geocoding already says you are inside it.
+const lucknow = predictNext(ROUTE, { lat: 26.80, lon: 81.02, currentPlace: "Lucknow, Uttar Pradesh", updatedAt: "2027-04-01T07:00:00Z" });
+assert.equal(lucknow?.next.name, "Hardoi", "if the current town is Lucknow, the next stop cannot also be Lucknow");
+console.log("  predict  in Lucknow -> Hardoi, never Lucknow again");
 
 // No position at all is the one case that must stay silent.
 assert.equal(predictNext(ROUTE, { lat: 26.8467, lon: 80.9462, updatedAt: null }), null, "no fix means no prediction");
