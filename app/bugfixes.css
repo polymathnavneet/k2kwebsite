@@ -1,0 +1,37 @@
+/* Screenshot bug fixes. Kept separate from the large base stylesheet so each
+   correction can be reviewed without disturbing the original design system. */
+
+/* 01 · The live location belongs in a quiet bottom-right card, not in a second
+   sticky bar under the navigation. */
+.live-pin{
+  position:fixed;
+  top:auto;
+  right:14px;
+  bottom:calc(78px + env(safe-area-inset-bottom));
+  left:auto;
+  z-index:46;
+  width:min(360px,calc(100vw - 28px));
+  min-height:0;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:start;
+  gap:4px 9px;
+  padding:12px 13px;
+  border:1px solid var(--ink);
+  border-radius:0;
+  box-shadow:5px 5px 0 rgba(8,9,8,.28);
+}
+.live-pin-dot{grid-row:1 / span 2;margin-top:4px}
+.live-pin-where{min-width:0;line-height:1.35}
+.live-pin-next{grid-column:2;margin-left:0;display:block;line-height:1.35}
+.live-pin-next b{display:inline;margin-right:7px}
+
+@media(min-width:700px){
+  .live-pin{
+    top:auto;
+    right:22px;
+    bottom:22px;
+    width:min(390px,calc(100vw - 44px));
+    padding:13px 15px;
+  }
+}
