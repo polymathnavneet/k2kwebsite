@@ -457,6 +457,9 @@ body{overflow-x:hidden}
 .reply-cell textarea{display:block;margin-top:5px}
 
 @media(min-width:700px){
+  /* The global 44px touch-target rule appears later than the main desktop
+     header rules, so keep it from resurrecting the phone menu on laptops. */
+  .menu-button{display:none}
   .conversation-preview-grid{grid-template-columns:1fr 1fr}
   .combined-heading{padding-top:75px}
 }

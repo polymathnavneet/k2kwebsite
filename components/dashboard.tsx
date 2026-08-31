@@ -83,7 +83,11 @@ export function Dashboard() {
           <strong className="place-metric">{ahead ? next?.name : route.stops[0]?.name}</strong>
           <span>{ahead
             ? `${number.format(ahead.toNextKm)} km up the route${ahead.strayed ? ` · ${number.format(ahead.offRouteKm)} km off the line` : ""}`
-            : "Waiting for the first position"}</span>
+            : live
+              ? "Waiting for a reliable GPS position"
+              : started
+                ? "GPS sets the next stop when the walk is live"
+                : `First step · ${formatWalkDate(istNoon(route.startDate))}`}</span>
         </article>
       </section>
 
