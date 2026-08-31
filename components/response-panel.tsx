@@ -5,7 +5,7 @@ import { Check, Share2 } from "lucide-react";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 
-/** Small, working ways to join the expedition without burying the conversation. */
+/** Small, working ways to join the expedition without fake "follow" buttons. */
 export function ResponsePanel() {
   const [notice, setNotice] = useState("");
   const [cheers, setCheers] = useState<{ cheer: number; follow: number } | null>(null);
@@ -17,18 +17,18 @@ export function ResponsePanel() {
       .catch(() => {});
   }, []);
 
-  async function react(type: "cheer" | "follow") {
-    const key = `alw-${type}-${type === "cheer" ? new Date().toISOString().slice(0, 10) : "saved"}`;
+  async function cheer() {
+    const key = `alw-cheer-${new Date().toISOString().slice(0, 10)}`;
     if (localStorage.getItem(key)) {
-      setNotice(type === "cheer" ? "You already cheered today. Thank you!" : "A Long Walk is already saved on this phone.");
+      setNotice("You already cheered today. Thank you!");
       return;
     }
     localStorage.setItem(key, "1");
-    setNotice(type === "cheer" ? "Your cheer reached Navneet 👏" : "A Long Walk is saved on this phone.");
+    setNotice("Your cheer reached Navneet 👏");
     fetch("/api/reactions", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({ type: "cheer" }),
     }).then(response => response.json())
       .then(data => { if (data?.today) setCheers(data.today); })
       .catch(() => {});
@@ -44,10 +44,9 @@ export function ResponsePanel() {
   }
 
   return <section className="response-panel shell compact-response">
-    <div><div className="section-tag">SMALL WAYS TO JOIN</div><h2>Send a signal.</h2><p>Cheer today, save the walk, share it, or play while you follow along.</p></div>
+    <div><div className="section-tag">SMALL WAYS TO JOIN</div><h2>Send a signal.</h2><p>Cheer today, share the journey, or play while you follow along.</p></div>
     <div className="response-buttons">
-      <button onClick={() => react("cheer")}><Check size={18} /> Cheer today{cheers && cheers.cheer > 0 ? <b className="tally">{number.format(cheers.cheer)}</b> : null}</button>
-      <button onClick={() => react("follow")}>＋ Follow A Long Walk</button>
+      <button onClick={cheer}><Check size={18} /> Cheer today{cheers && cheers.cheer > 0 ? <b className="tally">{number.format(cheers.cheer)}</b> : null}</button>
       <button onClick={share}><Share2 size={18} /> Share journey</button>
       <a href="/games">◆ Play road games</a>
     </div>
