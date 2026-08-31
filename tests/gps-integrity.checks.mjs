@@ -124,3 +124,20 @@ console.log("ALL GPS INTEGRITY CHECKS PASSED");
   assert.ok(later > onStart, "and it climbs from there");
   console.log(`  counting  30 Aug -> day ${beforeStart} (nothing counts) · 17 Dec -> day ${onStart} · 5 Jan -> day ${later}`);
 }
+
+// --- today must be an Indian calendar day, not the expedition day number ---
+// The old code reset "distance today" when the expedition day number changed.
+// Before the walk that number is 0 every single day, so it never changed, and
+// 28.5 km of travel piled up under "today" and stayed there.
+{
+  const monday = time.istDayKey(new Date("2026-09-01T05:00:00Z"));
+  const stillMonday = time.istDayKey(new Date("2026-09-01T18:29:00Z"));
+  const tuesday = time.istDayKey(new Date("2026-09-01T18:31:00Z"));
+  assert.equal(monday, stillMonday, "the same Indian day, twelve hours apart");
+  assert.notEqual(monday, tuesday, "and it rolls over at midnight in India, not UTC");
+
+  const dayNumberBefore = time.walkDay("2026-12-17", new Date("2026-09-01T05:00:00Z"));
+  const dayNumberNext = time.walkDay("2026-12-17", new Date("2026-09-02T05:00:00Z"));
+  assert.equal(dayNumberBefore, dayNumberNext, "the expedition day number is 0 on both, which is why it could not reset a daily total");
+  console.log(`  today     ${monday} -> ${tuesday} rolls over; the day number stays ${dayNumberBefore} throughout`);
+}

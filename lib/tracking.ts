@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
 import { gpsPoints, journey, routeConfig, routeStops, routeSuggestions } from "@/db/schema";
@@ -184,9 +184,9 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
     : [];
 
   const day = started ? dayOfWalk(startDate) : previous.day;
-  const sameDay = day === previous.day;
-  const distanceTotal = Math.round((previous.distanceTotal + walked) * 10) / 10;
-  const distanceToday = Math.round(((sameDay ? previous.distanceToday : 0) + walked) * 10) / 10;
+  // Both figures are added up from the recorded points rather than carried
+  // forward, so they cannot drift. See totals() below.
+  const { distanceTotal, distanceToday } = await totals(db);
 
   const place = await reverseGeocode(last.lat, last.lon);
   let suggestion: TrackResult["suggestion"] = null;
@@ -259,6 +259,78 @@ function explain(state: {
 
 /** Today's totals, used to reset the day's distance at Indian midnight. */
 export const trackingDayKey = istDayKey;
+
+/**
+ * The distance walked, added up from the points rather than carried forward.
+ *
+ * It used to be kept as a running total: take yesterday's number and add
+ * today's movement. That is fine until one number goes wrong, and then it is
+ * wrong for the rest of the walk - a fix counted twice, or a batch that arrived
+ * during an outage, and the total is quietly overstated with no way back. Over
+ * a hundred and eighty days that is not a risk worth carrying on a site whose
+ * whole claim is that the distance is real.
+ *
+ * Every point already stores the kilometres it contributed and whether they
+ * counted, so both figures are simply a sum. Nothing accumulates, nothing
+ * drifts, and running this a hundred times gives the same answer as running it
+ * once. If a bad point is ever removed, the totals correct themselves.
+ *
+ * "Today" is an Indian calendar day, not the expedition day number. Keying it
+ * on the day number was why distance today never reset before the walk began:
+ * the day number is 0 every day until the seventeenth of December, so every
+ * day looked like the same day.
+ */
+export async function totals(db: Db) {
+  const [summed] = await db
+    .select({ km: sql<number>`coalesce(sum(${gpsPoints.countedKm}), 0)` })
+    .from(gpsPoints)
+    .where(eq(gpsPoints.counted, 1));
+
+  // Only the last couple of days can belong to today, whichever side of
+  // midnight the recording clock was on.
+  const since = new Date(Date.now() - 2 * 86400000).toISOString();
+  const recent = await db
+    .select({ recordedAt: gpsPoints.recordedAt, countedKm: gpsPoints.countedKm })
+    .from(gpsPoints)
+    .where(and(eq(gpsPoints.counted, 1), gte(gpsPoints.recordedAt, since)));
+
+  const today = istDayKey();
+  const todayKm = recent
+    .filter(point => istDayKey(point.recordedAt) === today)
+    .reduce((sum, point) => sum + (point.countedKm ?? 0), 0);
+
+  return {
+    distanceTotal: Math.round((summed?.km ?? 0) * 10) / 10,
+    distanceToday: Math.round(todayKm * 10) / 10,
+  };
+}
+
+/**
+ * Bring the published figures back in line with the points, without needing a
+ * new position to do it.
+ *
+ * Run on a timer, this is what rolls "today" over at Indian midnight even on a
+ * day he never sends a fix, and what quietly repairs the total if anything ever
+ * went in wrong.
+ */
+export async function reconcile(db: Db) {
+  const [previous] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
+  if (!previous) return null;
+
+  const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
+  const startDate = config?.startDate ?? defaultRoute.startDate;
+  const started = dayOfWalk(startDate) >= 1;
+  const { distanceTotal, distanceToday } = await totals(db);
+  const day = started ? dayOfWalk(startDate) : previous.day;
+
+  if (distanceTotal === previous.distanceTotal && distanceToday === previous.distanceToday && day === previous.day) return null;
+
+  await db.update(journey)
+    .set({ distanceTotal, distanceToday, day, ...(started && previous.mode !== "live" ? { mode: "live" } : {}) })
+    .where(eq(journey.id, 1));
+
+  return { distanceTotal, distanceToday, day };
+}
 
 async function proposeStop(db: Db, input: {
   name: string; state: string; lat: number; lon: number; alongKm: number; reason: string; stops: RouteStop[];
