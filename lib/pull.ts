@@ -33,6 +33,21 @@ export const SETTING_KEYS = { sheet: "control_sheet", doc: "content_doc", pulled
 /** The prose slots a document may fill. Anything else in the document is ignored. */
 export const SLOTS = ["home-note", "about-extra", "sponsor-note", "book-note", "route-note", "journal-note"] as const;
 
+/**
+ * Settings a document may set, written the same way as everything else in it.
+ *
+ * The first version of this put them in a spreadsheet, and Navneet could not
+ * use it: setting names, dates and paragraphs of instruction all stacked in
+ * column A, which on a phone is a wall of text with nowhere obvious to type. He
+ * writes prose all day. So a heading and a line underneath it, exactly like the
+ * page text, and no spreadsheet needed at all.
+ */
+const DOC_SETTINGS: Record<string, string> = {
+  status: "status", mode: "mode", "last-slept": "last slept", partner: "partner",
+  "dispatch-title": "latest title", "dispatch-text": "latest text",
+  "start-date": "start date", pace: "pace",
+};
+
 export type PullReport = { applied: string[]; ignored: string[]; problems: string[]; at: string };
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -191,8 +206,30 @@ async function applyDoc(db: Db, text: string, report: PullReport) {
     return;
   }
 
+  // Settings first: a heading with one line under it, same as everything else.
+  const values = new Map<string, string>();
+  for (const [heading, key] of Object.entries(DOC_SETTINGS)) {
+    const body = sections.get(heading);
+    if (body !== undefined && body.trim()) values.set(key, body.trim().split(/\r?\n/)[0].trim());
+  }
+  if (values.size) {
+    await applyJourney(db, values, report);
+    await applyRoute(db, values, report);
+  }
+
+  // Then the run-up, one step a line: date | what it is | why it matters.
+  const plan = sections.get("before-the-walk");
+  if (plan?.trim()) {
+    const steps = plan.split(/\r?\n/).map(line => line.split("|").map(part => part.trim()))
+      .filter(parts => DAY.test(parts[0] ?? ""))
+      .map(parts => ({ date: parts[0], title: clean(parts[1], 120), detail: clean(parts[2], 400) }));
+    if (steps.length) await applyPlan(db, steps, report);
+    else report.problems.push("No usable dates under ## before-the-walk. Each line needs to start 2026-12-17 followed by a | .");
+  }
+
   const written: string[] = [];
   for (const [slot, body] of sections) {
+    if (handledAbove(slot)) continue;
     if (!(SLOTS as readonly string[]).includes(slot)) { report.ignored.push(`## ${slot}`); continue; }
     const value = body.slice(0, 4000);
     await db.insert(contentBlocks).values({ slot, body: value, updatedAt: new Date().toISOString() })
@@ -200,4 +237,9 @@ async function applyDoc(db: Db, text: string, report: PullReport) {
     written.push(slot);
   }
   if (written.length) report.applied.push(`Page text: ${written.join(", ")}`);
+}
+
+/** Headings handled above, so they are not also reported as unknown slots. */
+function handledAbove(slot: string) {
+  return slot === "before-the-walk" || Object.keys(DOC_SETTINGS).includes(slot);
 }
