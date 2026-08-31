@@ -16,7 +16,7 @@ export const PREPARATION_PROMPTS = [
   "What did you do today to get ready, and how did it go?",
   "What is the one thing you still have not sorted out?",
   "What did you spend money on this week, and was it worth it?",
-  "How far did you walk today, and how did your feet feel afterwards?",
+  "How did today's training feel, and what did it teach you?",
   "What piece of kit are you still unsure about?",
   "Who did you talk to about the walk today, and what did they say?",
   "What are you most afraid of about the first week?",
@@ -77,7 +77,7 @@ export const todayKey = istDayKey;
 export type TapGroup = { group: string; options: string[] };
 
 export const PREPARATION_TAPS: TapGroup[] = [
-  { group: "Training", options: ["Walked 5 km", "Walked 10 km", "Walked 20 km", "Walked with full pack", "Strength work", "Rest day"] },
+  { group: "Training", options: ["Training walk", "Walked with full pack", "Strength work", "Mobility work", "Rest day"] },
   { group: "Kit", options: ["Broke in shoes", "Tested the pack", "Bought kit", "Repaired something", "Still deciding on kit"] },
   { group: "Groundwork", options: ["Route research", "Talked to a sponsor", "Talked to press", "Wrote", "Filmed", "Sorted paperwork"] },
   { group: "Body", options: ["Feet fine", "Blisters", "Sore legs", "Something hurts", "Slept badly", "Felt strong"] },
