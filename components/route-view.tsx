@@ -12,7 +12,7 @@ const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 const VISIT_RADIUS_KM = 12;
 
 export function RouteView() {
-  const { journey, route, trail } = useLiveJourney();
+  const { journey, route, trail } = useLiveJourney({ trail: true });
 
   const estimate = useMemo(() => {
     const started = dayOfWalk(route.startDate) >= 1;
