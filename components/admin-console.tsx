@@ -213,6 +213,16 @@ export function AdminConsole() {
     finally { setBusyRow(""); }
   }
 
+  async function removeEntry(id: string) {
+    setBusyRow(id);
+    try {
+      await request("/api/journal", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "remove", id }) });
+      setEntries(current => current.filter(entry => entry.id !== id));
+      say("Note deleted.");
+    } catch (error) { say(error instanceof Error ? error.message : "Could not delete that note"); }
+    finally { setBusyRow(""); }
+  }
+
   async function saveStatus(status: string) {
     setJourney(current => ({ ...current, status }));
     say(`Published: ${status.toLowerCase()}.`);
@@ -251,7 +261,7 @@ export function AdminConsole() {
   }
 
 
-  async function messageAction(id: string, action: "reply" | "publish" | "hide") {
+  async function messageAction(id: string, action: "reply" | "publish" | "hide" | "delete") {
     const reply = (replies[id] || "").trim();
 
     // Catch the empty-reply case here rather than making the person wait for a
@@ -270,6 +280,11 @@ export function AdminConsole() {
         body: JSON.stringify({ id, action, reply }),
       });
 
+      if (action === "delete") {
+        setMessages(current => current.filter(row => row.id !== id));
+        say("Deleted. The message and the contact detail are gone.");
+        return;
+      }
       // Update just this row. Reloading everything used to be the only feedback,
       // and on a phone it looked like nothing had happened at all.
       const now = new Date().toISOString();
@@ -364,7 +379,7 @@ export function AdminConsole() {
       <TabsContent value="plan" className="admin-panel"><div className="admin-heading"><div><h2>Before the first step</h2><p>The run-up on the homepage, counting itself down. The last date is the day the walk starts — change it and every arrival date on the route moves with it.</p></div><Button onClick={savePlan}>Publish the plan</Button></div><div className="route-controls"><Button variant="outline" onClick={() => setPlan(current => [...current, { date: current.at(-1)?.date ?? route.startDate, title: "New step", detail: "" }])}><Plus /> Add a step</Button></div><div className="route-editor">{plan.map((step, index) => <article key={index}><header><b>{String(index + 1).padStart(2, "0")}{index === plan.length - 1 ? " · THE FIRST STEP" : ""}</b><div><Button size="icon" variant="ghost" disabled={plan.length <= 1} onClick={() => setPlan(current => current.filter((_, stepIndex) => stepIndex !== index))}><Trash2 /></Button></div></header><div><label>DATE<Input type="date" value={step.date} onChange={event => editPlan(index, "date", event.target.value)} /></label><label>TITLE<Input value={step.title} onChange={event => editPlan(index, "title", event.target.value)} /></label><label className="wide">WHAT HAPPENS<Input value={step.detail} onChange={event => editPlan(index, "detail", event.target.value)} /></label></div></article>)}</div><Button className="admin-save-mobile" onClick={savePlan}>Publish the plan</Button>
       </TabsContent>
 
-      <TabsContent value="messages" className="admin-panel"><div className="admin-heading"><div><h2>Public reply sheet</h2><p>Type a reply and press Reply — it appears under the message on the public wall straight away. Yellow cells are private and never published.</p></div><Button variant="outline" onClick={() => exportCsv("messages")}><Download /> Export CSV</Button></div><div className="admin-table"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Name</TableHead><TableHead>Message</TableHead><TableHead>Private contact</TableHead><TableHead>Status</TableHead><TableHead>Public reply</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{messages.map(row => <TableRow key={row.id}><TableCell data-label="Date">{new Date(row.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell data-label="Type">{row.type}</TableCell><TableCell data-label="Name">{row.name}<small>{row.place}</small></TableCell><TableCell data-label="Message" className="wrap-cell">{row.message}</TableCell><TableCell data-label="Private contact" className="private-cell">{row.contact || <em>not carried over</em>}</TableCell><TableCell data-label="Status"><span className={`status-chip ${row.status}`}>{row.status === "public" ? "On the wall" : row.status === "hidden" ? "Hidden" : "Held"}</span></TableCell><TableCell data-label="Public reply"><Textarea value={replies[row.id] || ""} onChange={event => setReplies(value => ({ ...value, [row.id]: event.target.value }))} /></TableCell><TableCell data-label="Actions"><div className="table-actions"><Button disabled={busyRow === row.id} onClick={() => messageAction(row.id, "reply")}>{busyRow === row.id ? "Saving…" : row.reply ? "Update reply" : "Reply"}</Button>{row.status !== "public" && <Button variant="outline" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "publish")}>Put on the wall</Button>}{row.status !== "hidden" && <Button variant="destructive" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "hide")}>Hide</Button>}</div>{rowNote[row.id] && <p className="row-note" role="status">{rowNote[row.id]}</p>}</TableCell></TableRow>)}</TableBody></Table></div>
+      <TabsContent value="messages" className="admin-panel"><div className="admin-heading"><div><h2>Public reply sheet</h2><p>Type a reply and press Reply — it appears under the message on the public wall straight away. Yellow cells are private and never published.</p></div><Button variant="outline" onClick={() => exportCsv("messages")}><Download /> Export CSV</Button></div><div className="admin-table"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Name</TableHead><TableHead>Message</TableHead><TableHead>Private contact</TableHead><TableHead>Status</TableHead><TableHead>Public reply</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{messages.map(row => <TableRow key={row.id}><TableCell data-label="Date">{new Date(row.createdAt).toLocaleDateString("en-IN")}</TableCell><TableCell data-label="Type">{row.type}</TableCell><TableCell data-label="Name">{row.name}<small>{row.place}</small></TableCell><TableCell data-label="Message" className="wrap-cell">{row.message}</TableCell><TableCell data-label="Private contact" className="private-cell">{row.contact || <em>not carried over</em>}</TableCell><TableCell data-label="Status"><span className={`status-chip ${row.status}`}>{row.status === "public" ? "On the wall" : row.status === "hidden" ? "Hidden" : "Held"}</span></TableCell><TableCell data-label="Public reply"><Textarea value={replies[row.id] || ""} onChange={event => setReplies(value => ({ ...value, [row.id]: event.target.value }))} /></TableCell><TableCell data-label="Actions"><div className="table-actions"><Button disabled={busyRow === row.id} onClick={() => messageAction(row.id, "reply")}>{busyRow === row.id ? "Saving…" : row.reply ? "Update reply" : "Reply"}</Button>{row.status !== "public" && <Button variant="outline" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "publish")}>Put on the wall</Button>}{row.status !== "hidden" && <Button variant="destructive" disabled={busyRow === row.id} onClick={() => messageAction(row.id, "hide")}>Hide</Button>}<Button variant="ghost" disabled={busyRow === row.id} onClick={() => { if (confirm(`Delete ${row.name}'s message for good? Hiding keeps it; this does not.`)) messageAction(row.id, "delete"); }}><Trash2 /> Delete</Button></div>{rowNote[row.id] && <p className="row-note" role="status">{rowNote[row.id]}</p>}</TableCell></TableRow>)}</TableBody></Table></div>
       </TabsContent>
       <TabsContent value="journal" className="admin-panel">
         <div className="admin-heading"><div><h2>Field notes</h2><p>Answering the daily question above publishes here straight away. Answering twice in one day replaces that day&apos;s entry rather than adding a second.</p></div></div>
@@ -373,6 +388,7 @@ export function AdminConsole() {
             <div className="top"><b>{entry.day}</b>{entry.place && <span>{entry.place}</span>}</div>
             <div style={{ fontSize: 12, opacity: .65 }}>{entry.question}</div>
             <div style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{entry.body}</div>
+            <div className="stop-actions"><Button variant="ghost" disabled={busyRow === entry.id} onClick={() => { if (confirm(`Delete the note from ${entry.day}?`)) removeEntry(entry.id); }}><Trash2 /> Delete</Button></div>
           </div>)}
           {!entries.length && <p style={{ fontSize: 13, opacity: .7 }}>Nothing written yet. Answer the question at the top.</p>}
         </div>

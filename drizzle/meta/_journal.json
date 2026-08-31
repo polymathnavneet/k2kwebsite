@@ -64,6 +64,13 @@
       "when": 1788110000000,
       "tag": "0008_google_control",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1788120000000,
+      "tag": "0009_auto_adopt",
+      "breakpoints": true
     }
   ]
 }

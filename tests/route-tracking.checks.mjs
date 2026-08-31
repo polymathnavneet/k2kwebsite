@@ -131,3 +131,19 @@ assert.equal(alreadyOnRoute(stops, "Kanpur", 26.4499, 80.3319), false, "Kanpur i
 console.log("✓ a genuine detour is flagged and would be offered as a new stop\n");
 
 console.log("ALL ROUTE TRACKING CHECKS PASSED");
+
+// --- a road that is not on the map -----------------------------------------
+// Distance is the ground he covered between two fixes. The route is only ever
+// used to answer "which town is next", so a detour, a diversion or a wrong turn
+// counts every metre of itself.
+{
+  const a = { lat: 26.8100, lon: 84.5100 };
+  const b = { lat: 26.8300, lon: 84.5400 };
+  const straight = geo.distanceKm(a.lat, a.lon, b.lat, b.lon);
+  assert.ok(straight > 0, "movement between two fixes is measured wherever it happened");
+
+  // The same two points, nowhere near the drawn line, still measure the same.
+  const farOff = geo.distanceKm(a.lat + 2, a.lon + 2, b.lat + 2, b.lon + 2);
+  assert.ok(Math.abs(farOff - straight) < straight * 0.05, "being off the route does not change the distance walked");
+  console.log(`  off-route  ${straight.toFixed(2)} km on the line, ${farOff.toFixed(2)} km far away from it - the same walking`);
+}

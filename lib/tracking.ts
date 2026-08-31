@@ -332,6 +332,35 @@ export async function reconcile(db: Db) {
   return { distanceTotal, distanceToday, day };
 }
 
+/**
+ * When a place stops being a guess and becomes part of the route.
+ *
+ * Three separate sightings, spread over at least half an hour. A man walking
+ * through a town is near it for well over that; a single bad fix is one
+ * sighting and never reaches three. So a road he actually took joins the route
+ * on its own, and a glitch never does.
+ */
+const ADOPT_SIGHTINGS = 3;
+const ADOPT_MINUTES = 30;
+
+/** Put a place the walk keeps passing onto the route, and close the question. */
+async function adopt(db: Db, pending: { id: string; name: string; state: string; lat: number; lon: number; km: number }) {
+  const stops = await loadStops(db);
+  const km = insertionKm(stops, pending.km);
+  if (km === null) return null;
+
+  const ordered = [...stops, { name: pending.name, state: pending.state, lat: pending.lat, lon: pending.lon, km, note: "Added from the road - you walked through it." }]
+    .sort((a, b) => a.km - b.km);
+
+  await db.delete(routeStops);
+  await db.insert(routeStops).values(ordered.map((stop, index) => ({
+    sortOrder: index, name: stop.name, state: stop.state, lat: stop.lat, lon: stop.lon, km: stop.km, note: stop.note ?? "",
+  })));
+  await db.update(routeSuggestions).set({ status: "accepted", decidedAt: new Date().toISOString() }).where(eq(routeSuggestions.id, pending.id));
+
+  return { km };
+}
+
 async function proposeStop(db: Db, input: {
   name: string; state: string; lat: number; lon: number; alongKm: number; reason: string; stops: RouteStop[];
 }) {
@@ -339,11 +368,25 @@ async function proposeStop(db: Db, input: {
   if (km === null) return null;
 
   const [pending] = await db
-    .select({ id: routeSuggestions.id })
+    .select()
     .from(routeSuggestions)
     .where(and(eq(routeSuggestions.name, input.name), eq(routeSuggestions.status, "pending")))
     .limit(1);
-  if (pending) return null;
+
+  // Seen again. One sighting is a guess - a bad fix in a tunnel makes one - so
+  // it is counted rather than ignored, and the count is what earns the place a
+  // spot on the route.
+  if (pending) {
+    const sightings = pending.sightings + 1;
+    await db.update(routeSuggestions).set({ sightings }).where(eq(routeSuggestions.id, pending.id));
+
+    const minutes = (Date.now() - new Date(pending.createdAt).getTime()) / 60000;
+    if (sightings >= ADOPT_SIGHTINGS && minutes >= ADOPT_MINUTES) {
+      const added = await adopt(db, pending);
+      if (added) return { id: pending.id, name: pending.name, state: pending.state, km: added.km, reason: `${pending.name} has been added to the route by itself - you walked through it.`, adopted: true };
+    }
+    return null;
+  }
 
   const id = crypto.randomUUID();
   await db.insert(routeSuggestions).values({
