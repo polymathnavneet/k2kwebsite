@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const route = ["Kanyakumari", "Madurai", "Bengaluru", "Hyderabad", "Nagpur", "Jabalpur", "Rewa", "Prayagraj", "Varanasi", "Lucknow", "Delhi", "Jammu", "Srinagar"];
 const pairs = [["Kanyakumari", "Tamil Nadu"], ["Bengaluru", "Karnataka"], ["Hyderabad", "Telangana"], ["Nagpur", "Maharashtra"], ["Rewa", "Madhya Pradesh"], ["Srinagar", "Jammu & Kashmir"]];
 const shuffle = <T,>(items: T[]) => [...items].sort(() => Math.random() - .5);
+const buildCards = () => pairs.flatMap((pair, pairIndex) => pair.map((label, side) => ({ label, pairIndex, id: `${pairIndex}-${side}` })));
 
 type Game = "sprint" | "route" | "memory";
 type BoardRow = { name: string; score: number };
@@ -39,33 +40,53 @@ export function Games() {
   const sprintPlayed = useRef(false);
   const sprintSubmitted = useRef(false);
 
-  const [routeRun, setRouteRun] = useState<string[]>(() => shuffle(route));
+  // Deterministic first render avoids a hydration mismatch. The shuffle happens
+  // after mount, when there is only one browser making the decision.
+  const [routeRun, setRouteRun] = useState<string[]>(route);
   const [expected, setExpected] = useState(0);
   const [routeStartedAt, setRouteStartedAt] = useState<number | null>(null);
-
-  const makeCards = () => shuffle(pairs.flatMap((pair, pairIndex) => pair.map((label, side) => ({ label, pairIndex, id: `${pairIndex}-${side}-${Math.random()}` }))));
-  const [cards, setCards] = useState(makeCards);
+  const [cards, setCards] = useState(buildCards);
   const [open, setOpen] = useState<string[]>([]);
   const [matched, setMatched] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
 
   useEffect(() => {
-    let id = localStorage.getItem(PLAYER_ID) || "";
-    if (!id) {
-      id = crypto.randomUUID().replace(/-/g, "");
-      localStorage.setItem(PLAYER_ID, id);
-    }
-    setPlayerId(id);
-    setPlayerName(localStorage.getItem(PLAYER_NAME) || "");
-    try { setBests(JSON.parse(localStorage.getItem(BESTS) || "{}")); } catch { setBests({}); }
-    fetch("/api/games", { cache: "no-store" })
-      .then(response => response.json())
-      .then(data => setBoards({
-        sprint: Array.isArray(data.sprint) ? data.sprint : [],
-        route: Array.isArray(data.route) ? data.route : [],
-        memory: Array.isArray(data.memory) ? data.memory : [],
-      }))
-      .catch(() => {});
+    const first = setTimeout(() => {
+      let id = localStorage.getItem(PLAYER_ID) || "";
+      if (!id) {
+        id = crypto.randomUUID().replace(/-/g, "");
+        localStorage.setItem(PLAYER_ID, id);
+      }
+      const name = localStorage.getItem(PLAYER_NAME) || "";
+      let stored: Bests = {};
+      try { stored = JSON.parse(localStorage.getItem(BESTS) || "{}"); } catch { stored = {}; }
+
+      setPlayerId(id);
+      setPlayerName(name);
+      setBests(stored);
+      setRouteRun(shuffle(route));
+      setCards(shuffle(buildCards()));
+
+      fetch("/api/games", { cache: "no-store" })
+        .then(response => response.json())
+        .then(data => setBoards({
+          sprint: Array.isArray(data.sprint) ? data.sprint : [],
+          route: Array.isArray(data.route) ? data.route : [],
+          memory: Array.isArray(data.memory) ? data.memory : [],
+        }))
+        .catch(() => {});
+
+      // A best achieved while offline is not condemned to localStorage purgatory.
+      // Opening the page online again quietly offers it to the real leaderboard.
+      (Object.entries(stored) as [Game, number][]).forEach(([game, storedScore]) => {
+        fetch("/api/games", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ game, score: storedScore, playerId: id, playerName: name.trim() || "Walker" }),
+        }).catch(() => {});
+      });
+    }, 0);
+    return () => clearTimeout(first);
   }, []);
 
   const saveScore = useCallback(async (game: Game, nextScore: number) => {
@@ -86,11 +107,11 @@ export function Games() {
       });
       const result = await response.json() as { leaderboard?: BoardRow[] };
       if (response.ok && Array.isArray(result.leaderboard)) {
-        setBoards(current => ({ ...current, [game]: result.leaderboard! }));
+        setBoards(current => ({ ...current, [game]: result.leaderboard as BoardRow[] }));
       }
     } catch {
-      // The personal best is already safe on the device. The public board can
-      // catch the next score when a connection returns.
+      // The personal best is already safe on this device. The mount-time sync
+      // above will offer it to the database when a connection returns.
     }
   }, [playerId, playerName]);
 
@@ -126,7 +147,7 @@ export function Games() {
     return () => clearTimeout(timer);
   }, [openCards, matched, saveScore]);
 
-  const resetMemory = () => { setCards(makeCards()); setOpen([]); setMatched([]); setMoves(0); };
+  const resetMemory = () => { setCards(shuffle(buildCards())); setOpen([]); setMatched([]); setMoves(0); };
 
   const tapRoute = (city: string) => {
     const now = Date.now();
