@@ -1,33 +1,16 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { journey } from "@/db/schema";
+import { recordGpsPlace } from "@/lib/gps-places";
 import { isAdmin, isTracker } from "@/lib/server";
 import { processPoints, type TrackPoint } from "@/lib/tracking";
 
 /**
  * POST /api/track -> feed the walk from a real recording, not a single tap.
  *
- * One button press on a phone is a single point, and a single point is the
- * least trustworthy thing a tracker can run on: miss a day and the distance is
- * simply wrong. This endpoint takes a whole track instead, so the distance is
- * the sum of a recorded path.
- *
- * It accepts three shapes, because the useful sources each speak their own:
- *
- *   1. Plain    { "points": [{ "lat": 21.1, "lon": 79.0, "at": "..." }, ...] }
- *   2. OwnTracks { "_type": "location", "lat": 21.1, "lon": 79.0, "tst": 1766... }
- *      A free phone app that posts its position on its own, all day, and
- *      queues when there is no signal.
- *   3. Google Takeout location history, as exported from takeout.google.com.
- *      Google Maps Timeline has no live API, so this is the way its data gets
- *      in: export it, upload the file.
- *
- * Points are sorted by time and fed through the same processing as a manual
- * sync, so a batch and a tap cannot disagree about the distance.
+ * Accepts a plain point list, OwnTracks, or Google Takeout location history.
  */
-
 const MAX_POINTS = 5000;
-
 type Loose = Record<string, unknown>;
 
 const num = (value: unknown) => {
@@ -38,7 +21,6 @@ const num = (value: unknown) => {
 const valid = (point: TrackPoint) =>
   point.lat >= -90 && point.lat <= 90 && point.lon >= -180 && point.lon <= 180;
 
-/** Google Takeout stores coordinates as degrees times 1e7. */
 const e7 = (value: unknown) => {
   const parsed = num(value);
   return parsed === null ? null : parsed / 1e7;
@@ -47,7 +29,6 @@ const e7 = (value: unknown) => {
 function extractPoints(body: Loose): TrackPoint[] {
   const points: TrackPoint[] = [];
 
-  // 1. Plain list.
   if (Array.isArray(body.points)) {
     for (const item of body.points as Loose[]) {
       const lat = num(item.lat), lon = num(item.lon ?? item.lng);
@@ -56,7 +37,6 @@ function extractPoints(body: Loose): TrackPoint[] {
     }
   }
 
-  // 2. A single OwnTracks report.
   if (!points.length && body._type === "location") {
     const lat = num(body.lat), lon = num(body.lon);
     const at = num(body.tst);
@@ -65,7 +45,6 @@ function extractPoints(body: Loose): TrackPoint[] {
     }
   }
 
-  // 3. Google Takeout location history.
   const locations = (body.locations ?? body.rawSignals) as Loose[] | undefined;
   if (!points.length && Array.isArray(locations)) {
     for (const item of locations) {
@@ -83,18 +62,22 @@ function extractPoints(body: Loose): TrackPoint[] {
   }
 
   const usable = points.filter(valid);
-  // Oldest first, so the walk is replayed in the order it happened.
   usable.sort((a, b) => String(a.at ?? "").localeCompare(String(b.at ?? "")));
   return usable.slice(-MAX_POINTS);
 }
 
-/**
- * GET /api/track?key=...&lat=...&lon=...
- *
- * Several free tracker apps can only be pointed at a URL and will only send a
- * GET. Refusing them would mean the automatic path did not work on the most
- * common free app, so the same processing is offered here.
- */
+async function rememberPlace(result: Awaited<ReturnType<typeof processPoints>>, point: TrackPoint) {
+  await recordGpsPlace({
+    place: result.place,
+    lat: point.lat,
+    lon: point.lon,
+    distanceKm: Number(result.journey.distanceTotal ?? 0),
+    recordedAt: point.at ?? String(result.journey.updatedAt ?? ""),
+    live: result.journey.mode === "live",
+  });
+}
+
+/** GET form for tracker apps that can only call a URL. */
 export async function GET(request: Request) {
   if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -107,14 +90,14 @@ export async function GET(request: Request) {
 
   const at = query.get("at") ?? query.get("time") ?? query.get("timestamp");
   const accuracy = num(query.get("acc") ?? query.get("accuracy"));
+  const point = { lat, lon, at: at ?? undefined, accuracy: accuracy ?? undefined };
   const db = getDb();
-  const result = await processPoints(db, [{ lat, lon, at: at ?? undefined, accuracy: accuracy ?? undefined }]);
+  const result = await processPoints(db, [point]);
+  await rememberPlace(result, point);
   return Response.json({ ok: true, accepted: 1, ...result });
 }
 
 export async function POST(request: Request) {
-  // Either Navneet in the admin panel, or a tracker app carrying the key that
-  // can do nothing but add positions.
   if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: Loose;
@@ -131,17 +114,11 @@ export async function POST(request: Request) {
     }, { status: 400 });
   }
 
-  // GPS deliberately does not mirror to GitHub. Continuous tracking would
-  // mean a commit every fix - thousands a week, and straight into GitHub's
-  // rate limits. The journey is mirrored when it is published from the
-  // admin panel instead, which is when it is worth recording.
   const db = getDb();
   const result = await processPoints(db, points);
+  await rememberPlace(result, points[points.length - 1]);
 
-  // The phone already knows its battery, its signal and its altitude, and
-  // OwnTracks puts all three in every report. Reading them here is the
-  // difference between three fields Navneet has to remember to type and three
-  // that are simply true.
+  // OwnTracks also tells us battery, altitude and connectivity.
   if (body._type === "location") {
     const patch: Record<string, number | string> = {};
     const battery = num(body.batt);
@@ -152,8 +129,7 @@ export async function POST(request: Request) {
     if (connection) patch.connectivity = connection;
     if (Object.keys(patch).length) await db.update(journey).set(patch).where(eq(journey.id, 1));
 
-    // OwnTracks reads the reply as a list of commands for the phone and logs a
-    // complaint about anything else. It has nothing to collect, so: nothing.
+    // OwnTracks interprets a JSON response as phone commands. There are none.
     return Response.json([]);
   }
 

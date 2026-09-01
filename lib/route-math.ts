@@ -8,7 +8,8 @@ import type { RouteStop } from "@/lib/types";
  * Adding up the gaps between GPS fixes answers "how far has he walked", but it
  * cannot answer "which town is next" or "has he left the planned line". For
  * that the point has to be projected onto the route itself: the nearest place
- * along the drawn line, how far along that is, and how far off it he strayed.
+ * along the drawn line, how far along that is, and how far the line sits from
+ * him - which is a fact about the line, not about him wandering.
  */
 
 export type Projection = {

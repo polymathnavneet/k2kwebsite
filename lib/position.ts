@@ -2,7 +2,7 @@ import { nextStopAfter, projectOntoRoute } from "@/lib/route-math";
 import type { Journey, RouteStop } from "@/lib/types";
 
 /**
- * How far off the drawn line still counts as walking it.
+ * How far the drawn line may sit from him before it needs correcting.
  *
  * A route is a list of towns, not a kerb-accurate path, so the real road wanders
  * either side of it. Past twelve kilometres the drawn line has stopped
