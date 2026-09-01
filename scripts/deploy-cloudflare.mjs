@@ -9,6 +9,7 @@
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { routesFor } from "./domain.mjs";
 
 const root = process.cwd();
 const built = resolve(root, "dist", "server", "wrangler.json");
@@ -37,6 +38,19 @@ if (workerName) {
 // site can be opened without a custom domain being set up first.
 config.d1_databases = [{ binding: "DB", database_name: databaseName, database_id: databaseId }];
 config.workers_dev = true;
+
+// And his own domain on top of it, when there is one.
+//
+// The workers.dev address deliberately stays switched on beside it. It is the
+// address in every link shared so far and the one the admin panel is bookmarked
+// at, and turning it off to celebrate a new domain would break all of them on
+// the same afternoon. The custom domain is simply a second door.
+const siteDomain = process.env.CF_SITE_DOMAIN?.trim() ?? "";
+const routes = routesFor(siteDomain, process.env.CF_ZONE_NAME?.trim() ?? "");
+if (routes.length) {
+  config.routes = routes;
+  console.log(`Binding it to ${routes.map(route => route.pattern).join(" and ")}.`);
+}
 
 // Wake the worker every quarter of an hour to read the Google sheet and
 // document. This is what makes them the site's controls rather than a copy of

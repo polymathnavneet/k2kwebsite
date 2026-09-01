@@ -11,6 +11,8 @@
  *
  * Resolved values are handed to the later steps through GITHUB_ENV.
  */
+import { cleanDomain, zoneCandidates } from "./domain.mjs";
+
 const API = "https://api.cloudflare.com/client/v4";
 const token = process.env.CLOUDFLARE_API_TOKEN?.trim() ?? "";
 const askedAccount = process.env.CLOUDFLARE_ACCOUNT_ID?.trim() ?? "";
@@ -122,7 +124,48 @@ if (existing.ok && existing.body.result?.subdomain) {
   if (!subdomain) stop("This account has no workers.dev name and none of the candidates were free.", "  Pick one at dash.cloudflare.com under Workers & Pages - Subdomain.");
 }
 
-const siteUrl = `https://${workerName}.${subdomain}.workers.dev`;
+// --- a domain of his own ---------------------------------------------------
+// Indian mobile networks do not resolve *.workers.dev. Navneet's own tracker
+// spent a night queueing 4,700 positions it could not deliver because of it,
+// and every reader on the same network gets nothing at all when they try to
+// open the site. A domain is the only real answer, so the deploy knows how to
+// use one the moment there is one.
+//
+// Nothing here can stop a deploy. A domain that is missing, misspelt or not yet
+// on this Cloudflare account is reported and stepped over: the site stays up at
+// its workers.dev address, which is worse than a domain and far better than an
+// error page.
+let siteUrl = `https://${workerName}.${subdomain}.workers.dev`;
+let customDomain = "";
+let zoneName = "";
+
+const askedDomain = process.env.CLOUDFLARE_SITE_DOMAIN?.trim() ?? "";
+const wantedDomain = cleanDomain(askedDomain);
+
+if (askedDomain && !wantedDomain) {
+  console.log(`\nSITE_DOMAIN is set to "${askedDomain}", which is not a domain name.`);
+  console.log("  It should look like alongwalk.in - no https://, no slashes.");
+  console.log("  Staying on the workers.dev address for this deploy.");
+} else if (wantedDomain) {
+  for (const candidate of zoneCandidates(wantedDomain)) {
+    const zones = await call(`/zones?name=${encodeURIComponent(candidate)}`);
+    const found = zones.ok ? (zones.body.result ?? [])[0] : null;
+    if (found) { zoneName = found.name; break; }
+  }
+
+  if (zoneName) {
+    customDomain = wantedDomain;
+    siteUrl = `https://${customDomain}`;
+    console.log(`\nThe domain "${customDomain}" is on this account, in the "${zoneName}" zone.`);
+  } else {
+    console.log(`\n"${wantedDomain}" is not a domain on this Cloudflare account yet.`);
+    console.log("  Add it at dash.cloudflare.com - Add a domain - and point the");
+    console.log("  registrar at the two nameservers Cloudflare gives you. Once it");
+    console.log("  says Active, the next deploy will pick it up by itself.");
+    console.log("  Staying on the workers.dev address until then.");
+  }
+}
+
 console.log(`\nDeploying "${workerName}" against "${database.name}".`);
 console.log(`The site will be at: ${siteUrl}`);
 
@@ -133,5 +176,7 @@ appendFileSync(process.env.GITHUB_ENV, [
   `CF_D1_ID=${database.uuid}`,
   `CF_WORKER_NAME=${workerName}`,
   `CF_SITE_URL=${siteUrl}`,
+  `CF_SITE_DOMAIN=${customDomain}`,
+  `CF_ZONE_NAME=${zoneName}`,
   "",
 ].join("\n"));
