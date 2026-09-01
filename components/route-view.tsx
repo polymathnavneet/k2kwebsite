@@ -15,8 +15,8 @@ export function RouteView() {
 
   // The finishing date is worked out from the clock, and a render has to give
   // the same answer twice. Reading Date.now() inside the memo below made the
-  // date change on any re-render that happened to recompute it; the reading is
-  // taken in an effect instead and refreshed on its own beat.
+  // date move on any re-render that recomputed it; the reading is taken in an
+  // effect instead and refreshed on its own beat.
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     const tick = () => setNow(Date.now());
