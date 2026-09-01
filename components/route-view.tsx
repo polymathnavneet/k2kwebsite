@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { calendarPace, dayOfWalk, livePace } from "@/lib/geo";
 import { predictNext } from "@/lib/position";
@@ -12,6 +12,18 @@ const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 
 export function RouteView() {
   const { journey, route, trail, places } = useLiveJourney({ trail: true });
+
+  // The finishing date is worked out from the clock, and a render has to give
+  // the same answer twice. Reading Date.now() inside the memo below made the
+  // date move on any re-render that recomputed it; the reading is taken in an
+  // effect instead and refreshed on its own beat.
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const first = setTimeout(tick, 0);
+    const timer = setInterval(tick, 60000);
+    return () => { clearTimeout(first); clearInterval(timer); };
+  }, []);
 
   const estimate = useMemo(() => {
     const started = dayOfWalk(route.startDate) >= 1;
@@ -25,10 +37,10 @@ export function RouteView() {
     // never enter the list of places below until GPS has actually named them.
     const ahead = live ? predictNext(route.stops, journey) : null;
     const remaining = Math.max(0, route.totalDistance - journey.distanceTotal);
-    const finish = live ? new Date(Date.now() + remaining / Math.max(1, pace) * 86400000) : null;
+    const finish = live && now !== null ? new Date(now + remaining / Math.max(1, pace) * 86400000) : null;
 
     return { live, pace, ahead, finish };
-  }, [route, journey]);
+  }, [route, journey, now]);
 
   const currentAlreadyNamed = places.some(place =>
     journey.currentPlace.toLowerCase().startsWith(place.name.toLowerCase())
