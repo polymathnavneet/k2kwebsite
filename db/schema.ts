@@ -70,6 +70,11 @@ export const journey = sqliteTable("journey", {
   accuracyM: real("accuracy_m"),
   lat: real("lat").notNull().default(26.8467),
   lon: real("lon").notNull().default(80.9462),
+  // The position currentPlace was last worked out at. Not the same as lat/lon:
+  // those move with every fix, so measuring "has he moved far enough to be
+  // somewhere else" against them always answers no. See shouldName().
+  namedLat: real("named_lat"),
+  namedLon: real("named_lon"),
   temperature: real("temperature"),
   altitude: real("altitude"),
   battery: integer("battery"),

@@ -84,7 +84,9 @@ export async function POST(request: Request) {
 
   const db = getDb();
   const result = await processPoints(db, [{ lat, lon }]);
-  await recordGpsPlace({
+  // Same rule as /api/track: a position that was not freshly named is carrying
+  // the previous name forward, and must not be filed as a new sighting of it.
+  if (result.named) await recordGpsPlace({
     place: result.place,
     lat,
     lon,

@@ -27,6 +27,60 @@ export function driftThresholdKm(accuracy?: number | null) {
   const fromAccuracy = accuracy != null && accuracy > 0 ? (accuracy * 1.5) / 1000 : 0;
   return Math.max(MIN_MOVE_FLOOR_KM, fromAccuracy);
 }
+/**
+ * When to ask what a position is called.
+ *
+ * Every fix used to be handed to Nominatim. That is fine at walking pace and
+ * catastrophic behind a queue: OwnTracks holds on to every position it cannot
+ * deliver, and Navneet's phone sat behind a DNS failure with 3,834 of them
+ * waiting. The moment that clears they arrive as 3,834 requests in a few
+ * minutes, and Nominatim - free, one request a second, and entitled to ban
+ * anyone who abuses it - would rightly have cut the site off for the rest of
+ * the walk.
+ *
+ * Three rules, each of which is also simply the truthful answer:
+ *
+ *  - Below NAME_MIN_MOVE_KM he has not gone anywhere, so the name has not
+ *    changed. A phone lying on a table asks nothing at all.
+ *  - Past NAME_MAX_AGE_MIN the fix is history rather than a location. The site
+ *    says where he *is*; a position from nine hours ago does not answer that,
+ *    and the current one is right behind it in the queue.
+ *  - Unless that history has crossed NAME_FAR_KM, at which point it is a
+ *    different part of India and worth a name even late. A five-hundred
+ *    kilometre backlog therefore costs about twenty lookups, not two thousand.
+ *
+ * Distance is measured from where the name was last asked for, never from the
+ * last stored position: that moves with every fix, so nothing would ever
+ * accumulate past two hundred metres.
+ */
+export const NAME_MIN_MOVE_KM = 0.2;
+export const NAME_MAX_AGE_MIN = 30;
+export const NAME_FAR_KM = 25;
+
+export function shouldName(input: {
+  namedLat: number | null | undefined;
+  namedLon: number | null | undefined;
+  named: string;
+  lat: number;
+  lon: number;
+  recordedAt: string;
+  now?: number;
+}): boolean {
+  // Nothing to carry forward: the site would have no name to show.
+  if (!input.named.trim()) return true;
+  if (input.namedLat == null || input.namedLon == null) return true;
+  if (!Number.isFinite(input.namedLat) || !Number.isFinite(input.namedLon)) return true;
+
+  const moved = distanceKm(input.namedLat, input.namedLon, input.lat, input.lon);
+  if (!Number.isFinite(moved) || moved < NAME_MIN_MOVE_KM) return false;
+
+  const at = new Date(input.recordedAt).getTime();
+  const ageMinutes = Number.isFinite(at) ? ((input.now ?? Date.now()) - at) / 60000 : 0;
+  if (ageMinutes <= NAME_MAX_AGE_MIN) return true;
+
+  return moved >= NAME_FAR_KM;
+}
+
 /** Above this in a single hop with no timing, it was a vehicle. */
 export const MAX_MOVE_KM = 150;
 /**
@@ -54,6 +108,8 @@ export type TrackResult = {
   onRoute: boolean;
   reached: string[];
   place: string;
+  /** True when this position was freshly named rather than carried forward. */
+  named: boolean;
   suggestion: { id: string; name: string; state: string; km: number; reason: string } | null;
   reason: string;
   journey: Record<string, unknown>;
@@ -188,7 +244,15 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
   // forward, so they cannot drift. See totals() below.
   const { distanceTotal, distanceToday } = await totals(db, startDate);
 
-  const place = await reverseGeocode(last.lat, last.lon);
+  const wantsName = shouldName({
+    namedLat: previous.namedLat,
+    namedLon: previous.namedLon,
+    named: String(previous.currentPlace ?? ""),
+    lat: last.lat,
+    lon: last.lon,
+    recordedAt: last.at ?? new Date().toISOString(),
+  });
+  const place = wantsName ? await reverseGeocode(last.lat, last.lon) : null;
   let suggestion: TrackResult["suggestion"] = null;
 
   if (live && place && !onRoute && !alreadyOnRoute(stops, place.name, last.lat, last.lon)) {
@@ -225,6 +289,9 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
     offRouteKm: Math.min(2000, Math.max(0, offRouteKm)),
     currentPlace,
     precisePlace,
+    // Only moves when a name was actually fetched, so the next fix measures
+    // its distance from there rather than from itself.
+    ...(place ? { namedLat: last.lat, namedLon: last.lon } : {}),
     accuracyM,
     // The walk announces itself on the morning of the start date rather than
     // waiting for somebody to remember a dropdown.
@@ -241,7 +308,7 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
     counted, movedKm: Math.round(walked * 100) / 100,
     acceptedPoints, duplicatePoints, rejected,
     alongKm: progressKm, offRouteKm, onRoute, reached,
-    place: currentPlace, suggestion,
+    place: currentPlace, named: Boolean(place), suggestion,
     reason: explain({ live, walked, acceptedPoints, duplicatePoints, rejected, onRoute, offRouteKm, reached, next: next?.name, suggestion }),
     journey: nextJourney,
   };
