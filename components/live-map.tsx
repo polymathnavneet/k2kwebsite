@@ -87,11 +87,16 @@ export function LiveMap({ stops, journey, trail = [], compact = false, active = 
       leafletRef.current = L;
       const map = L.map(holder.current, { dragging: false, scrollWheelZoom: false, zoomControl: false });
       map.setView([journey.lat, journey.lon], active ? 8 : 6);
-      // International/Latin label styling avoids the surrounding map suddenly
-      // switching scripts while the walk itself is in India.
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      // OpenStreetMap's own tiles: free, no key, and - checked by fetching
+      // tiles over Madurai and Punjab and looking at them - they render Indian
+      // place names in Latin script, which is what an English page needs.
+      //
+      // These replace CARTO's basemaps, which stamp "API KEY REQUIRED" in grey
+      // diagonal text across every single tile now that anonymous access has
+      // been withdrawn. That is what the map was showing.
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        attribution: "&copy; OpenStreetMap contributors",
       }).addTo(map);
       layerRef.current = L.layerGroup();
       layerRef.current.addTo(map);

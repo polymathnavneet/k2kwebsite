@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CloudDownload, Download, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { CloudDownload, Crosshair, Download, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -74,6 +74,45 @@ export function AdminConsole() {
     const result = await response.json() as T & { error?: string };
     if (!response.ok) throw new Error(result.error || "Request failed");
     return result;
+  }
+
+  /**
+   * Put this phone's position on the site, now.
+   *
+   * The tracker app is meant to do this by itself, and when it is working this
+   * button is never needed. It exists because the app can be silent - not
+   * installed, wrong key, permission refused, battery saver holding it down -
+   * and until somebody notices, the site quietly shows a position from days
+   * ago as though it were current. There is nothing a server can do about a
+   * phone that is not talking: no amount of code here can reach out and ask.
+   *
+   * This browser can ask, though. It is the same GPS, read from the page he is
+   * already looking at, and it costs one tap.
+   */
+  const [locating, setLocating] = useState(false);
+  async function sendMyPosition() {
+    if (!("geolocation" in navigator)) { say("This browser cannot read a position."); return; }
+    setLocating(true);
+    say("Asking this phone where it is…");
+    try {
+      const spot = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true, timeout: 20000, maximumAge: 0,
+        }));
+      const { latitude, longitude, accuracy } = spot.coords;
+      await request("/api/gps", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lat: latitude, lon: longitude, accuracy, source: "browser" }),
+      });
+      say(`Sent: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)} m).`);
+      await loadAll();
+    } catch (error) {
+      const message = error instanceof GeolocationPositionError
+        ? (error.code === 1 ? "Location permission was refused for this site." : "This phone could not get a fix.")
+        : error instanceof Error ? error.message : "Could not send the position.";
+      say(message);
+    } finally { setLocating(false); }
   }
 
   async function loadAll() {
@@ -379,6 +418,24 @@ export function AdminConsole() {
             ? `${cheers.today.cheer.toLocaleString("en-IN")} ${cheers.today.cheer === 1 ? "person" : "people"} cheered you today`
             : "Nobody has cheered yet today"}</b>
           <span>{cheers.counts.cheer.toLocaleString("en-IN")} cheers in all · {cheers.counts.follow.toLocaleString("en-IN")} following the walk</span>
+        </div>}
+
+        {/* When the tracker has gone quiet the site is showing an old position
+            as though it were current, and that is the one thing this project
+            cannot afford. Said loudly, with the fix attached. */}
+        {(!heard || !heard.fresh) && <div className="gps-alarm">
+          <b>{!heard
+            ? "Your tracker has never sent a position."
+            : `Your tracker has been silent for ${heard.phrase.replace(" ago", "")}.`}</b>
+          <p>
+            {!heard
+              ? "Nothing has ever arrived from the app, so the position on the site is a starting value, not a reading."
+              : "The site is showing where you were then. It cannot fetch your phone — the phone has to send."}
+            {" "}Tap below to put this phone&apos;s position on the site now, then check the app&apos;s settings.
+          </p>
+          <Button disabled={locating} onClick={sendMyPosition}>
+            <Crosshair /> {locating ? "Reading this phone…" : "Send my position now"}
+          </Button>
         </div>}
 
         {/* Four facts, all from his phone. This is the "is it working?" glance,
