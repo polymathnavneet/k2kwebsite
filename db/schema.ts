@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const messages = sqliteTable("messages", {
   id: text("id").primaryKey(),
@@ -229,3 +229,27 @@ export const contentBlocks = sqliteTable("content_blocks", {
   body: text("body").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+/**
+ * Every attempt to send a position, accepted or refused.
+ *
+ * A phone posting with the wrong key got a 401 and left nothing behind, so
+ * "never set up" and "trying constantly and being turned away" were the same
+ * empty table. This is what tells them apart.
+ *
+ * The offered key is never stored - only what was wrong with it.
+ */
+export const trackerAttempts = sqliteTable(
+  "tracker_attempts",
+  {
+    id: text("id").primaryKey(),
+    at: text("at").notNull(),
+    route: text("route").notNull(),
+    method: text("method").notNull(),
+    /** accepted | no-key | wrong-key | bad-position | error */
+    outcome: text("outcome").notNull(),
+    detail: text("detail").notNull().default(""),
+    agent: text("agent").notNull().default(""),
+  },
+  table => [index("tracker_attempt_at").on(table.at)]
+);

@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { journey } from "@/db/schema";
 import { recordGpsPlace } from "@/lib/gps-places";
 import { isAdmin, isTracker } from "@/lib/server";
+import { describeKey, noteAttempt } from "@/lib/tracker-log";
 import { processPoints, type TrackPoint } from "@/lib/tracking";
 
 /**
@@ -79,7 +80,14 @@ async function rememberPlace(result: Awaited<ReturnType<typeof processPoints>>, 
 
 /** GET form for tracker apps that can only call a URL. */
 export async function GET(request: Request) {
-  if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  // A refused knock is recorded too, and this is the point of the whole thing:
+  // a phone turned away used to leave nothing behind, so "never set up" and
+  // "trying all day with the wrong key" were the same empty table.
+  if (!isTracker(request) && !isAdmin(request)) {
+    const why = describeKey(request, "x-track-key");
+    await noteAttempt(getDb(), { route: "/api/track", method: "GET", ...why, agent: request.headers.get("user-agent") });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const query = new URL(request.url).searchParams;
   const lat = num(query.get("lat") ?? query.get("latitude"));
@@ -94,11 +102,16 @@ export async function GET(request: Request) {
   const db = getDb();
   const result = await processPoints(db, [point]);
   await rememberPlace(result, point);
+  await noteAttempt(db, { route: "/api/track", method: "GET", outcome: "accepted", detail: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, agent: request.headers.get("user-agent") });
   return Response.json({ ok: true, accepted: 1, ...result });
 }
 
 export async function POST(request: Request) {
-  if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isTracker(request) && !isAdmin(request)) {
+    const why = describeKey(request, "x-track-key");
+    await noteAttempt(getDb(), { route: "/api/track", method: "POST", ...why, agent: request.headers.get("user-agent") });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let body: Loose;
   try {
@@ -109,6 +122,11 @@ export async function POST(request: Request) {
 
   const points = extractPoints(body);
   if (!points.length) {
+    await noteAttempt(getDb(), {
+      route: "/api/track", method: "POST", outcome: "bad-position",
+      detail: "The key was accepted, but the message carried no usable position.",
+      agent: request.headers.get("user-agent"),
+    });
     return Response.json({
       error: "No usable positions found. Send { points: [{ lat, lon, at }] }, an OwnTracks report, or a Google Takeout location file.",
     }, { status: 400 });
@@ -117,6 +135,11 @@ export async function POST(request: Request) {
   const db = getDb();
   const result = await processPoints(db, points);
   await rememberPlace(result, points[points.length - 1]);
+  await noteAttempt(db, {
+    route: "/api/track", method: "POST", outcome: "accepted",
+    detail: `${points.length} position${points.length === 1 ? "" : "s"} accepted`,
+    agent: request.headers.get("user-agent"),
+  });
 
   // OwnTracks also tells us battery, altitude and connectivity.
   if (body._type === "location") {
