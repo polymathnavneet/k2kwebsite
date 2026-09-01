@@ -86,6 +86,10 @@ function extractPoints(body: Loose): TrackPoint[] {
 }
 
 async function rememberPlace(result: Awaited<ReturnType<typeof processPoints>>, point: TrackPoint) {
+  // Only when the position was actually named. A queued backlog carries the
+  // previous name forward, and writing that down again would credit a town
+  // with three thousand sightings it never had.
+  if (!result.named) return;
   await recordGpsPlace({
     place: result.place,
     lat: point.lat,
