@@ -67,6 +67,16 @@ export function AdminConsole() {
   // Cheers. They have been counted since the site launched and shown to nobody,
   // least of all to the man they were for.
   const [cheers, setCheers] = useState<{ today: { cheer: number; follow: number }; counts: { cheer: number; follow: number } } | null>(null);
+  // Why the phone is or is not reporting, and the address to paste into it.
+  const [tracker, setTracker] = useState<{
+    everAccepted: boolean;
+    lastAttemptAt: string | null;
+    total: number;
+    recent: { outcome: string; count: number; last: string; detail: string; agent: string }[];
+    ownTracksUrl: string;
+    plainUrl: string;
+    configured: boolean;
+  } | null>(null);
 
   async function request<T>(url: string, options: RequestInit = {}) {
     const cleanToken = token.trim();
@@ -132,6 +142,8 @@ export function AdminConsole() {
       setGallery(shots.rows || []);
       const applause = await fetch("/api/reactions").then(response => response.json()).catch(() => null);
       if (applause?.today) setCheers(applause);
+      const trackerHealth = await request<typeof tracker>("/api/tracker").catch(() => null);
+      if (trackerHealth) setTracker(trackerHealth);
       const diary = await request<{ rows: JournalEntry[] }>("/api/journal?admin=1").catch(() => null);
       if (diary) setEntries(diary.rows || []);
       setJourney(journeyData); setRoute(routeData); setMessages(messageData.rows); setBooks(bookData.rows);
@@ -423,6 +435,52 @@ export function AdminConsole() {
         {/* When the tracker has gone quiet the site is showing an old position
             as though it were current, and that is the one thing this project
             cannot afford. Said loudly, with the fix attached. */}
+        {/* What is actually wrong, named. Every knock on the tracking door is
+            recorded now, refused ones included, so this can say "your phone
+            tried and was turned away" rather than leaving the two possible
+            faults looking identical. */}
+        {tracker && (!heard || !heard.fresh) && <div className="tracker-doctor">
+          <b>{tracker.everAccepted
+            ? "Your phone has reached the site before, and has gone quiet."
+            : tracker.total > 0
+              ? "Your phone is reaching the site and being turned away."
+              : "Nothing has ever knocked on the tracking door."}</b>
+
+          {tracker.recent.length > 0 && <ul className="tracker-log">
+            {tracker.recent.map(row => <li key={row.outcome} className={row.outcome}>
+              <b>{row.count}×</b>
+              <span>{
+                row.outcome === "accepted" ? "accepted"
+                : row.outcome === "no-key" ? "refused — no key in the address"
+                : row.outcome === "wrong-key" ? "refused — the key did not match"
+                : row.outcome === "bad-position" ? "key fine, but no position in the message"
+                : "error"
+              }</span>
+              <small>{row.detail}{row.agent ? ` · ${row.agent.split("/")[0]}` : ""}</small>
+            </li>)}
+          </ul>}
+
+          <p className="tracker-verdict">{
+            tracker.total === 0
+              ? "That means the app is not sending at all: it is in Quiet or Manual mode, has no location permission, or the address was never saved. Nothing has been refused, because nothing has arrived."
+              : tracker.recent.some(row => row.outcome === "wrong-key")
+                ? "The address in your app has the wrong key. Copy the one below over it exactly."
+                : tracker.recent.some(row => row.outcome === "no-key")
+                  ? "The address in your app is missing its ?key= part. Copy the one below over it exactly."
+                  : "The key is right and positions are arriving. If the site still looks old, the app is reporting too rarely — set Significant mode, interval 300, displacement 50."
+          }</p>
+
+          {tracker.configured && <div className="tracker-url">
+            <small>PASTE THIS INTO OWNTRACKS AS THE URL</small>
+            <code>{tracker.ownTracksUrl}</code>
+            <Button variant="outline" onClick={() => {
+              navigator.clipboard?.writeText(tracker.ownTracksUrl)
+                .then(() => say("Address copied. Paste it into OwnTracks → Preferences → Connection → URL."))
+                .catch(() => say("Could not copy — select the address and copy it by hand."));
+            }}>Copy the address</Button>
+          </div>}
+        </div>}
+
         {(!heard || !heard.fresh) && <div className="gps-alarm">
           <b>{!heard
             ? "Your tracker has never sent a position."

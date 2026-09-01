@@ -6,6 +6,7 @@ import { defaultRoute } from "@/lib/defaults";
 import { recordGpsPlace } from "@/lib/gps-places";
 import { isAdmin, isTracker } from "@/lib/server";
 import { processPoints, walkOpensAt } from "@/lib/tracking";
+import { describeKey, noteAttempt } from "@/lib/tracker-log";
 import type { GpsTrailPlace, GpsTrailPoint } from "@/lib/types";
 
 const MAX_PUBLIC_TRAIL_POINTS = 1800;
@@ -62,7 +63,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!isTracker(request) && !isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isTracker(request) && !isAdmin(request)) {
+    const why = describeKey(request, "x-track-key");
+    await noteAttempt(getDb(), { route: "/api/gps", method: "POST", ...why, agent: request.headers.get("user-agent") });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let body: Record<string, unknown>;
   try {
