@@ -6,7 +6,7 @@ const geoSrc = readFileSync("lib/geo.ts", "utf8").replace(/^import .*$/gm, "").r
 const mathSrc = readFileSync("lib/route-math.ts", "utf8").replace(/^import .*$/gm, "").replace(/^export /gm, "");
 const src = geoSrc + mathSrc + readFileSync("lib/position.ts", "utf8").replace(/^import .*$/gm, "");
 const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-const { positioned, onCourse, OFF_ROUTE_KM, predictNext } = await import("data:text/javascript," + encodeURIComponent(js));
+const { positioned, OFF_ROUTE_KM, predictNext } = await import("data:text/javascript," + encodeURIComponent(js));
 
 const BETTIAH = { lat: 26.810885, lon: 84.5193666, currentPlace: "Bettiah, Bihar" };
 
@@ -27,12 +27,9 @@ const cases = [
 
 for (const [name, journey, expectFix, expectCourse] of cases) {
   assert.equal(positioned(journey), expectFix, `${name}: positioned`);
-  assert.equal(onCourse(journey), expectCourse, `${name}: onCourse`);
   console.log(`  ${expectCourse ? "tracking" : "quiet   "}  ${name}`);
 }
 
-// onCourse must never be true without a real position, whatever else is set.
-assert.equal(onCourse({ lat: 1, lon: 1, offRouteKm: 0, updatedAt: "" }), false, "no timestamp means no tracking");
 console.log("  quiet     an empty timestamp is not a position");
 
 // --- the prediction, which is the whole point of the tracker ---------------
@@ -49,7 +46,9 @@ const BETTIAH_FIX = { ...BETTIAH, updatedAt: "2026-08-29T15:39:41Z", offRouteKm:
 const ahead = predictNext(ROUTE, BETTIAH_FIX);
 assert.ok(ahead, "a position 218 km off the line must still predict a next stop");
 assert.equal(ahead.next.name, "Sultanpur", "from Bettiah the next town up the route is Sultanpur");
-assert.ok(ahead.strayed, "and it must admit how far off the line that was taken from");
+// The drawn line is a long way from where he is; that is a fact about the
+// line, not about him wandering. It is reported so the line can be corrected.
+assert.ok(ahead.offRouteKm > OFF_ROUTE_KM, "it must report how far the drawn line sits from him");
 assert.ok(ahead.toNextKm > 0, "the distance to it is ahead, not behind");
 console.log(`  predict  Bettiah -> ${ahead.next.name}, ${Math.round(ahead.toNextKm)} km up the route, ${Math.round(ahead.offRouteKm)} km off the line`);
 

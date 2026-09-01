@@ -93,34 +93,15 @@ assert.equal(real.toNext.date, addDays("2026-12-30", 3));
 assert.equal(real.toFinish.days, Math.ceil(3990 / 20));
 console.log(`# ✓ 20 km/day -> next town in ${real.toNext.days} days (${real.toNext.date}), Srinagar in ${real.toFinish.days}`);
 
-// --- against the plan -------------------------------------------------------
+// --- the planned rate, used only until there is walking to measure ---------
 //
 // The plan is 25 km per *walking* day with a rest day a week, which is 21.43
-// per calendar day. Comparing a measured calendar rate against the raw 25
-// would report him behind on a day he walked exactly what he meant to.
+// per calendar day. The conversion matters because that figure stands in as the
+// arrival date before the first step.
 assert.ok(Math.abs(plannedCalendarRate(25) - 25 * 6 / 7) < 0.001);
-console.log(`# ✓ the plan's 25 km a walking day is ${plannedCalendarRate(25).toFixed(2)} a calendar day`);
+console.log(`# \u2713 the plan's 25 km a walking day is ${plannedCalendarRate(25).toFixed(2)} a calendar day`);
 
-assert.ok(real.daysVsPlan > 0, "20 km/day is slower than the plan, so he arrives later");
-console.log(`# ✓ walking 20 against a planned ${plannedCalendarRate(25).toFixed(1)} puts him ${real.daysVsPlan} days late`);
-
-// And walking the plan exactly should read as neither ahead nor behind.
-const onPlan = [];
-for (let i = 0; i < 14; i++) onPlan.push({ day: addDays("2026-12-17", i), km: plannedCalendarRate(25) });
-const matching = forecast({
-  days: onPlan, toNextKm: null, toFinishKm: 4270, plannedKmPerDay: 25,
-  startDate: "2026-12-17", today: "2026-12-30",
-});
-assert.equal(matching.daysVsPlan, 0, `walking the plan should read as on time, got ${matching.daysVsPlan}`);
-assert.equal(matching.toNext, null, "no next town given means none reported");
-console.log("# ✓ walking exactly the plan reads as neither ahead nor behind");
-
-// Faster than planned arrives early, and says so with a negative number.
-const quick = [];
-for (let i = 0; i < 14; i++) quick.push({ day: addDays("2026-12-17", i), km: 30 });
-const fast = forecast({
-  days: quick, toNextKm: 10, toFinishKm: 4270, plannedKmPerDay: 25,
-  startDate: "2026-12-17", today: "2026-12-30",
-});
-assert.ok(fast.daysVsPlan < 0, `30 km/day should be early, got ${fast.daysVsPlan}`);
-console.log(`# ✓ 30 km a day arrives ${Math.abs(fast.daysVsPlan)} days early`);
+// The site does not grade him against that figure - he chose the pace, and he
+// is free to change it by walking - so nothing compares the two.
+assert.ok(!("daysVsPlan" in real), "the forecast must not carry a verdict");
+console.log("# \u2713 no verdict is computed: the pace is his, not a target");

@@ -86,7 +86,7 @@ async function build(db: ReturnType<typeof getDb>, of: Kind): Promise<unknown[][
       ["field", "value"],
       ["mode", now.mode], ["status", now.status], ["day", now.day],
       ["distance today (km)", now.distanceToday], ["distance total (km)", now.distanceTotal],
-      ["along the route (km)", now.routeProgressKm ?? 0], ["off the line (km)", now.offRouteKm ?? 0],
+      ["along the route (km)", now.routeProgressKm ?? 0], ["drawn line is this far away (km)", now.offRouteKm ?? 0],
       ["where", now.currentPlace], ["latitude", now.lat], ["longitude", now.lon],
       ["last slept", now.lastSleep], ["partner", now.sponsorName], ["updated", now.updatedAt ?? ""],
     ];

@@ -194,7 +194,7 @@ export async function processPoints(db: Db, points: TrackPoint[], source = "manu
   if (live && place && !onRoute && !alreadyOnRoute(stops, place.name, last.lat, last.lon)) {
     suggestion = await proposeStop(db, {
       name: place.name, state: place.state, lat: last.lat, lon: last.lon, alongKm,
-      reason: `You are about ${Math.round(offRouteKm)} km off the planned line, near ${place.name}.`,
+      reason: `You walked through ${place.name}, which is not on the drawn line yet. Confirm it and the route follows you.`,
       stops,
     });
   }
@@ -267,7 +267,7 @@ function explain(state: {
 
   if (state.reached.length) parts.push(`Reached ${state.reached.join(", ")}.`);
   if (state.suggestion) parts.push(`New place found: ${state.suggestion.name}. Confirm it below to add it to the route.`);
-  else if (!state.onRoute) parts.push(`About ${Math.round(state.offRouteKm)} km off the planned line.`);
+  else if (!state.onRoute) parts.push(`The drawn line is about ${Math.round(state.offRouteKm)} km from here; it will follow you.`);
   if (state.next) parts.push(`Next: ${state.next}.`);
 
   return parts.join(" ") || "Position updated.";

@@ -22,8 +22,8 @@ export function Dashboard() {
   //            than admitting it.
   //
   // Progress follows the position along the route, not the raw distance walked.
-  // On a detour those differ, and the raw figure would claim towns had been
-  // passed that are still ahead.
+  // Where the road he takes is longer than the drawn line those differ, and the
+  // raw figure would claim towns had been passed that are still ahead.
   // Whether the walk has begun is a question about the calendar, not about a
   // switch in the admin panel. Before the start date the figures read zero
   // however much the tracker banked getting ready - it recorded a bus ride to
@@ -82,7 +82,7 @@ export function Dashboard() {
           <small>{ahead ? "NEXT STOP" : "ROUTE STARTS AT"}</small>
           <strong className="place-metric">{ahead ? next?.name : route.stops[0]?.name}</strong>
           <span>{ahead
-            ? `${number.format(ahead.toNextKm)} km up the route${ahead.strayed ? ` · ${number.format(ahead.offRouteKm)} km off the line` : ""}`
+            ? `${number.format(ahead.toNextKm)} km up the route`
             : live
               ? "Waiting for a reliable GPS position"
               : started

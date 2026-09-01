@@ -5,8 +5,9 @@ import type { Journey, RouteStop } from "@/lib/types";
  * How far off the drawn line still counts as walking it.
  *
  * A route is a list of towns, not a kerb-accurate path, so the real road wanders
- * either side of it. Twelve kilometres is wide enough to allow that and narrow
- * enough that a genuine detour is noticed.
+ * either side of it. Past twelve kilometres the drawn line has stopped
+ * describing where he is walking, and the line is what gets corrected: the town
+ * he is actually in joins the route. He is never "off" it.
  *
  * It lives here rather than in lib/tracking.ts because the pages need it too,
  * and tracking.ts reaches for the database - importing it into a page would
@@ -26,20 +27,6 @@ export function positioned(journey: Journey) {
 }
 
 /**
- * Is that position near enough the route for progress along it to mean anything?
- *
- * This is the question the site used to skip. It asked instead whether the walk
- * had been switched to "live" in the admin panel - a flag somebody has to
- * remember to set - and then reported "next stop Nagercoil, 22 km" to a man
- * standing in Bihar, 200 km from the line. Distance and the next town now
- * follow the position itself, and go quiet when the position cannot support
- * them.
- */
-export function onCourse(journey: Journey) {
-  return positioned(journey) && (journey.offRouteKm ?? 0) <= OFF_ROUTE_KM;
-}
-
-/**
  * Where the walk is heading next, worked out from the GPS position itself.
  *
  * This used to go quiet whenever the position was more than OFF_ROUTE_KM from
@@ -49,8 +36,8 @@ export function onCourse(journey: Journey) {
  * Sultanpur - which is the answer somebody following a walk to Kashmir wants,
  * and is nothing like the "Nagercoil, 22 km" the old flag-based version gave.
  *
- * So it always answers, and reports how far off the line the answer was taken
- * from, rather than refusing to answer at all. The stored progress figure is
+ * So it always answers, and reports how far the drawn line sits from where he
+ * really is, rather than refusing to answer at all. The stored progress figure is
  * ignored: it is only written when GPS is processed, so it goes stale the
  * moment a position arrives by any other route.
  */
@@ -78,8 +65,6 @@ export function predictNext(stops: RouteStop[], journey: Journey) {
     offRouteKm: projected.offRouteKm,
     next: destination,
     toNextKm: Math.max(0, destination.km - projected.alongKm),
-    // Far enough off the line that the answer deserves saying so out loud.
-    strayed: projected.offRouteKm > OFF_ROUTE_KM,
   };
 }
 

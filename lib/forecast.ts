@@ -3,11 +3,13 @@ import { istDayKey } from "@/lib/time";
 /**
  * When he actually arrives, worked out from how he has actually been walking.
  *
- * The site already carried a finishing date, and it was the plan's date: 4,270
- * kilometres at the twenty-five a day he wrote down before he had walked any of
- * them. That number is a hope. After a fortnight on the road there is a real
- * one, and it is the only one worth printing - a man averaging nineteen a day
- * does not arrive when a spreadsheet written in August says he will.
+ * The site carried a finishing date worked out from the pace he set himself
+ * before he had walked any of it. That is the best answer available until there
+ * is walking to measure, and no answer at all once there is: a man averaging
+ * nineteen a day does not arrive when a figure written in August says he will.
+ *
+ * What comes out is a date, not a mark. He chose the pace and he chose the
+ * road, so nothing here compares the two and nothing here calls him late.
  *
  * The rate is per *calendar* day, not per walking day, and that distinction is
  * the whole thing. Twenty-five kilometres on each of five days is not
@@ -30,10 +32,10 @@ export type Forecast = {
   toNext: { days: number; date: string } | null;
   toFinish: { days: number; date: string } | null;
   /**
-   * Against the plan he set out with: negative is early, positive is late.
-   * Null before there is a real rate to compare.
+   * The date his own planned pace gives, used until there is walking to
+   * measure. It is a starting figure, not a mark to be graded against: he set
+   * that pace himself and is free to change it by walking.
    */
-  daysVsPlan: number | null;
   plannedFinish: string;
 };
 
@@ -88,15 +90,15 @@ export function forecast(input: {
   const { kmPerDay, basisDays } = paceFrom(input.days, today);
   const enough = basisDays >= MIN_BASIS_DAYS && kmPerDay >= MIN_RATE_KM;
 
-  // The date the plan promised, kept alongside so the prediction can be read
-  // against the thing it replaces.
+  // The date his own planned pace gives. It stands in until there is walking to
+  // measure, and is not kept as something to be measured against afterwards.
   const plannedDays = Math.ceil(input.toFinishKm / Math.max(1, plannedCalendarRate(input.plannedKmPerDay)));
   const plannedFinish = addDays(today, plannedDays);
 
   if (!enough) {
     return {
       kmPerDay, basisDays, enough: false,
-      toNext: null, toFinish: null, daysVsPlan: null, plannedFinish,
+      toNext: null, toFinish: null, plannedFinish,
     };
   }
 
@@ -107,7 +109,6 @@ export function forecast(input: {
     kmPerDay, basisDays, enough: true,
     toNext: nextDays === null ? null : { days: nextDays, date: addDays(today, nextDays) },
     toFinish: { days: finishDays, date: addDays(today, finishDays) },
-    daysVsPlan: finishDays - plannedDays,
     plannedFinish,
   };
 }
@@ -115,10 +116,9 @@ export function forecast(input: {
 /**
  * The planned rate expressed per calendar day.
  *
- * The plan is written as kilometres per *walking* day with a rest day a week,
- * so comparing it against a measured calendar rate without this conversion
- * would flatter the plan by a seventh and report him behind schedule on a day
- * he walked exactly what he meant to.
+ * He set the pace as kilometres per *walking* day with a rest day a week, so
+ * using that figure directly as a calendar rate would overstate it by a seventh
+ * and put the stand-in arrival date a fortnight too early.
  */
 export function plannedCalendarRate(plannedKmPerDay: number) {
   return (plannedKmPerDay * 6) / 7;

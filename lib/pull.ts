@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
-import { contentBlocks, journalEntries, journey, routeConfig, siteSettings, timelineSteps } from "@/db/schema";
+import { contentBlocks, journalEntries, journey, routeConfig, routeStops, siteSettings, timelineSteps } from "@/db/schema";
 import { readData } from "@/lib/github";
 import { reconcile } from "@/lib/tracking";
 import { fileId, parseCsv, parseSections, readDoc, readSheet } from "@/lib/google";
@@ -89,6 +89,7 @@ export async function pull(db: Db): Promise<PullReport> {
   // publish a journal entry with nothing but the GitHub access it already has -
   // commit the file, and the site picks it up on the next quarter hour.
   await pullJournal(db, report);
+  await pullStopNotes(db, report);
 
   const sheetId = fileId(await setting(db, SETTING_KEYS.sheet));
   const docId = fileId(await setting(db, SETTING_KEYS.doc));
@@ -122,6 +123,51 @@ export async function pull(db: Db): Promise<PullReport> {
  * hand, and running this every fifteen minutes for nine months stays a no-op
  * until there is genuinely something new.
  */
+/**
+ * The lines of description under each town, corrected from the repository.
+ *
+ * Route stops live in the database and the mirror only ever writes them out to
+ * data/route.json, never back. So a wrong word in a stop's note had no way home
+ * - and one of them called Madurai "a detour with a reason", which is precisely
+ * the framing Navneet rejects: he chose that road, so it is not a detour from
+ * anything. It is the route.
+ *
+ * Only the note is touched, and only for a stop that already exists under that
+ * name. Coordinates, distances, ordering and the list of stops itself all stay
+ * where they belong - decided by the route and by where he actually walks -
+ * because a text file in a repository has no business moving a town.
+ */
+async function pullStopNotes(db: Db, report: PullReport) {
+  let stops: { name?: string; note?: string }[] = [];
+  try {
+    const { data } = await readData<{ stops?: typeof stops }>("route");
+    stops = Array.isArray(data?.stops) ? data.stops : [];
+  } catch {
+    return; // The repository being unreachable must never break the sync.
+  }
+  if (!stops.length) return;
+
+  const current = await db.select({ name: routeStops.name, note: routeStops.note }).from(routeStops);
+  const byName = new Map(current.map(row => [row.name, row.note ?? ""]));
+
+  const changed: string[] = [];
+  for (const stop of stops) {
+    const name = String(stop?.name ?? "").trim();
+    const note = String(stop?.note ?? "").trim().slice(0, 300);
+    if (!name || !byName.has(name) || byName.get(name) === note) continue;
+    await db.update(routeStops).set({ note }).where(eq(routeStops.name, name));
+    changed.push(name);
+  }
+
+  // Sixty-odd stop names in one report line is not a report anybody reads.
+  if (changed.length) {
+    const shown = changed.slice(0, 4).join(", ");
+    report.applied.push(changed.length > 4
+      ? `Route notes from GitHub: ${shown} and ${changed.length - 4} more`
+      : `Route notes from GitHub: ${shown}`);
+  }
+}
+
 async function pullJournal(db: Db, report: PullReport) {
   let entries: { day?: string; body?: string; question?: string; place?: string }[] = [];
   try {

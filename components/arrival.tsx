@@ -11,11 +11,13 @@ const km = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 /**
  * When he gets there, according to how he has actually been walking.
  *
- * The homepage already carried a finishing date and it was the plan's: 4,270
- * kilometres at the twenty-five a day he wrote down in August, before he had
- * walked a step of it. That is a hope with a date attached. Once there are two
- * weeks of real days behind him there is a truthful answer, and it is the only
- * one worth printing.
+ * The homepage carried a finishing date worked out from the pace he set
+ * himself, months before he had walked any of it. That is the best answer
+ * available until there is walking to measure, and no answer at all once there
+ * is. From the first step these dates come from what he actually does.
+ *
+ * It does not grade him. He chose the pace and he chose the road, so the site
+ * reports where that gets him and when, and leaves the verdict alone.
  *
  * It recalculates itself. Nothing here is set by hand, and nothing here is
  * stored: the rate comes from the recorded days every time the page loads, so a
@@ -69,13 +71,13 @@ export function Arrival() {
       <div className="arrival-head">
         <div>
           <div className="section-tag warm">WHEN HE GETS THERE</div>
-          <h2>{planning ? <>The plan says<br />these dates.</> : <>Working it out<br />as he walks.</>}</h2>
+          <h2>{planning ? <>His own pace,<br />his own dates.</> : <>Working it out<br />as he walks.</>}</h2>
           <p>
             {planning
-              ? `Until there are real days to measure, these are the dates the plan promises: ${km.format(route.paceKmPerDay)} km on each walking day with a rest day a week. From the first step they are recalculated from what he actually does.`
+              ? `Until there are real days to measure, these come from the pace he set himself: ${km.format(route.paceKmPerDay)} km on each walking day with a rest day a week. From the first step they are worked out from what he actually does.`
               : result.enough
-                ? `Not the plan — the last ${result.basisDays} days of it. Every rest day, every short day and every long one is in this figure, because the road does not care why he was still.`
-                : `Not enough walking behind him yet to predict from. The dates below are still the plan's, and they will be replaced by real ones once there are a few days to measure.`}
+                ? `Measured from the last ${result.basisDays} days of walking. Every rest day, every short day and every long one is in this figure, because the road does not care why he was still.`
+                : `Not enough walking behind him yet to predict from. The dates below come from his own planned pace, and they give way to measured ones once there are a few days to read.`}
           </p>
         </div>
 
@@ -113,20 +115,10 @@ export function Arrival() {
               </>
             : <>
                 <b>{pretty(result.plannedFinish)}</b>
-                <span>the plan&apos;s date, not a prediction</span>
+                <span>from his planned pace, not yet measured</span>
               </>}
         </article>
       </div>
-
-      {result.enough && result.daysVsPlan !== null && (
-        <p className={`arrival-verdict${result.daysVsPlan > 0 ? " behind" : result.daysVsPlan < 0 ? " ahead" : ""}`}>
-          {result.daysVsPlan === 0
-            ? <>Exactly on the plan. Srinagar on <b>{pretty(result.toFinish!.date)}</b>, the day he said it would be.</>
-            : result.daysVsPlan < 0
-              ? <><b>{Math.abs(result.daysVsPlan)} days ahead</b> of the plan he set out with — the plan said {pretty(result.plannedFinish)}.</>
-              : <><b>{result.daysVsPlan} days behind</b> the plan he set out with, which said {pretty(result.plannedFinish)}. Nothing is being hidden: this is what the walking says.</>}
-        </p>
-      )}
     </section>
   );
 }

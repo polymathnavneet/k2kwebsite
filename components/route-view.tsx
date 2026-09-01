@@ -24,7 +24,7 @@ export function RouteView() {
     const day = live ? Math.max(journey.day, dayOfWalk(route.startDate)) : 0;
     // Two different measures, deliberately. Pace comes from the distance the
     // legs actually covered; which town is next comes from how far along the
-    // route that position sits. A detour makes them differ.
+    // route that position sits. A road longer than the drawn line makes them differ.
     // The planned figure is per walking day; projecting a finish needs the
     // calendar rate, which allows for rest days.
     const pace = live ? livePace(journey.distanceTotal, day, route.paceKmPerDay) : calendarPace(route.paceKmPerDay);
@@ -60,7 +60,7 @@ export function RouteView() {
       </div>
     </section>
     <section className="dynamic-route shell">
-      {estimate.live && estimate.offRoute > 12 && <p className="off-route-note">Navneet is currently about {Math.round(estimate.offRoute)} km off the drawn line. The route below is being corrected as he walks.</p>}
+      {estimate.live && estimate.offRoute > 12 && <p className="off-route-note">The drawn line below is about {Math.round(estimate.offRoute)} km from where Navneet actually is. His road is the route — the line is redrawn to follow him, not the other way round.</p>}
       <div className="route-note"><div className="section-tag">HOW DATES WORK</div><p>Before departure, dates count forward from the start date at the planned pace. Once the walk is live they come from the distance the GPS has actually recorded and the pace actually being walked, so walking faster pulls every date earlier and resting pushes them back. Change the route once in the admin sheet and every estimate recalculates.</p></div>
       <div className="stop-list">{estimate.stops.map((stop, index) => <article className={stop.reached ? "reached" : ""} key={`${stop.name}-${index}`}>
         <div><b>{String(index + 1).padStart(2, "0")}</b><span>{stop.reached ? "REACHED" : date(stop.eta)}</span></div>

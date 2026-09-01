@@ -12,7 +12,7 @@ export const defaultRoute: WalkRoute = {
     { name: "Tirunelveli", state: "Tamil Nadu", lat: 8.7139, lon: 77.7567, km: 90, note: "Out of the coastal strip and onto the plain." },
     { name: "Kovilpatti", state: "Tamil Nadu", lat: 9.171, lon: 77.8681, km: 145, note: "Cotton country and the long straight road north." },
     { name: "Virudhunagar", state: "Tamil Nadu", lat: 9.581, lon: 77.9578, km: 200, note: "Last stop before Madurai." },
-    { name: "Madurai", state: "Tamil Nadu", lat: 9.9252, lon: 78.1198, km: 250, note: "A detour with a reason: his first girlfriend lived here." },
+    { name: "Madurai", state: "Tamil Nadu", lat: 9.9252, lon: 78.1198, km: 250, note: "On the route on purpose: his first girlfriend lived here." },
     { name: "Dindigul", state: "Tamil Nadu", lat: 10.3673, lon: 77.9803, km: 315, note: "The hills come into view to the west." },
     { name: "Karur", state: "Tamil Nadu", lat: 10.9601, lon: 78.0766, km: 390, note: "Crossing the Amaravati and Kaveri." },
     { name: "Namakkal", state: "Tamil Nadu", lat: 11.2189, lon: 78.1677, km: 445, note: "Rock fort town on the way to Salem." },
