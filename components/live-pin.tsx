@@ -4,11 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLiveJourney } from "@/hooks/use-live-journey";
 import { lastHeard, positioned } from "@/lib/position";
-import { walkDay } from "@/lib/time";
 
-// The day's distance is quoted to a tenth in the tile below it, and two
-// different figures for the same thing on one screen reads as a broken site.
-const exact = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 
 /**
  * Where Navneet is, on every page.
@@ -20,21 +16,19 @@ const exact = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
  * a bar across the top, so it sits out of the way of whatever is being read
  * and stays put while the page scrolls under it.
  *
- * Once the walk is live it also carries the day's distance, because that is the
- * one figure a reader checks more than once a day. Before the first step it
- * would read "0 km today" every day for months, so it stays away until there is
- * a walk to measure.
+ * It says two things and no more: the place, and how long ago the phone said
+ * so. It used to say "GPS watching for movement", which told a reader nothing
+ * they could act on and hid the one fact they wanted - whether this was minutes
+ * old or days.
  *
- * The tense follows the age of the fix. Reporting a position all day is what
- * empties a phone battery, so the tracker speaks rarely and catches up at
- * night, and the last position can honestly be hours old. "Navneet is in
- * Lucknow" over a fix from breakfast is not tracking, it is guessing on his
- * behalf - so past a few hours it says "was", and says when.
+ * Reporting a position all day is what empties a phone battery, so the tracker
+ * speaks rarely and the last position can honestly be hours old. Saying exactly
+ * how old - down to the second when it is seconds - is the difference between
+ * tracking a man and guessing on his behalf.
  */
 export function LivePin() {
-  const { journey, route } = useLiveJourney();
+  const { journey } = useLiveJourney();
   const fix = positioned(journey);
-  const live = journey.mode === "live" && walkDay(route.startDate) >= 1;
 
   // Read from the clock in an effect rather than during render: rendering has
   // to give the same answer twice, and Date.now() does not. The first reading
@@ -60,11 +54,7 @@ export function LivePin() {
             : journey.currentPlace}
         </span>
         <span className="live-pin-sub">
-          {!fix ? "no GPS yet"
-            : stale && heard ? `last fix ${heard.phrase}`
-            : heard?.watching ? "GPS watching for movement"
-            : live ? `${exact.format(journey.distanceToday)} km today`
-            : journey.precisePlace ? journey.precisePlace.split(" · ")[0] : "position live"}
+          {!fix || !heard ? "no GPS yet" : `Updated ${heard.phrase}`}
         </span>
       </span>
     </Link>
