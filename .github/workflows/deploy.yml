@@ -39,6 +39,11 @@ jobs:
           CLOUDFLARE_D1_DATABASE_NAME: ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           CLOUDFLARE_WORKER_NAME: ${{ secrets.CLOUDFLARE_WORKER_NAME }}
+          # His own domain, once he has one. Set SITE_DOMAIN to the bare name -
+          # alongwalk.in - and the deploy binds the site to it and to www. Until
+          # then, and if the domain is not on the Cloudflare account yet, the
+          # deploy says so and carries on at the workers.dev address.
+          CLOUDFLARE_SITE_DOMAIN: ${{ secrets.SITE_DOMAIN }}
         run: node scripts/resolve-cloudflare.mjs
 
       - name: Build
