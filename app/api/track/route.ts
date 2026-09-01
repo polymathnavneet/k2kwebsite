@@ -14,7 +14,25 @@ import { processPoints, type TrackPoint } from "@/lib/tracking";
 const MAX_POINTS = 5000;
 type Loose = Record<string, unknown>;
 
+/**
+ * A number, or null when there was nothing to read.
+ *
+ * This used to be `Number.isFinite(Number(value)) ? Number(value) : null`,
+ * which looks right and is not: `Number(null)` is 0, and so is `Number("")`.
+ * `URLSearchParams.get` returns null for a parameter that is not there, so a
+ * request carrying no coordinates at all came through as latitude 0, longitude
+ * 0 - a real place in the Atlantic, six hundred kilometres off Ghana - and was
+ * published as Navneet's position. It is what happened when I called the
+ * endpoint with a key and no coordinates to test the key.
+ *
+ * The same slip quietly set accuracy, battery and altitude to zero whenever the
+ * phone left them out, so "±0 m" meant "not told" rather than "perfect".
+ */
 const num = (value: unknown) => {
+  if (value === null || value === undefined) return null;
+  // Trimmed first, because Number("   ") is 0 as well: "?lat= " would have
+  // landed in the Atlantic just as surely as leaving lat out altogether.
+  if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };

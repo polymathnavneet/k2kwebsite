@@ -89,18 +89,28 @@ export function lastHeard(journey: Journey, now = Date.now()) {
   const at = new Date(journey.updatedAt).getTime();
   if (!Number.isFinite(at)) return null;
 
-  const minutes = Math.max(0, Math.round((now - at) / 60000));
+  const seconds = Math.max(0, Math.round((now - at) / 1000));
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.round(minutes / 60);
+  const days = Math.round(minutes / 1440);
+
+  const plural = (count: number, unit: string) => `${count} ${unit}${count === 1 ? "" : "s"} ago`;
+
   return {
+    seconds,
     minutes,
     fresh: minutes < FRESH_HOURS * 60,
     // Significant Changes mode is intentionally quiet while the phone has not
-    // moved far enough. A few silent hours therefore means "watching", not
-    // "broken". After a full day without a fix the wording becomes a warning.
+    // moved far enough, so a few silent hours is normal rather than broken.
+    // The site no longer says so in words: "GPS watching for movement" told a
+    // reader nothing they could act on, and hid the one fact they wanted. How
+    // long ago it was answers both questions at once.
     watching: minutes >= 30 && minutes < FRESH_HOURS * 60,
-    /** "22 minutes ago", "6 hours ago", "2 days ago". */
-    phrase: minutes < 2 ? "just now"
-      : minutes < 60 ? `${minutes} minutes ago`
-      : minutes < 48 * 60 ? `${Math.round(minutes / 60)} hour${Math.round(minutes / 60) === 1 ? "" : "s"} ago`
-      : `${Math.round(minutes / 1440)} days ago`,
+    /** "12 seconds ago", "22 minutes ago", "6 hours ago", "2 days ago". */
+    phrase: seconds < 10 ? "just now"
+      : seconds < 60 ? plural(seconds, "second")
+      : minutes < 60 ? plural(minutes, "minute")
+      : hours < 48 ? plural(hours, "hour")
+      : plural(days, "day"),
   };
 }
