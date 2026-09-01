@@ -23,7 +23,7 @@ const headers = [
       "style-src 'self' 'unsafe-inline' https://unpkg.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org https://raw.githubusercontent.com https://api.github.com",
+      "connect-src 'self' https://nominatim.openstreetmap.org https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://raw.githubusercontent.com https://api.github.com",
       "frame-src https://www.instagram.com https://www.youtube-nocookie.com https://www.youtube.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
