@@ -1,12 +1,12 @@
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "@/db/schema";
 import { gpsPoints, journey, routeConfig, routeStops, routeSuggestions } from "@/db/schema";
 import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import { dayOfWalk, distanceKm } from "@/lib/geo";
 import { reverseGeocode } from "@/lib/places";
-import { alreadyOnRoute, insertionKm, nextStopAfter, projectOntoRoute } from "@/lib/route-math";
-import { OFF_ROUTE_KM } from "@/lib/position";
+import { insertionKm } from "@/lib/route-math";
+import { readPoint } from "@/lib/track-input";
 import { istDayKey } from "@/lib/time";
 import type { RouteStop } from "@/lib/types";
 
@@ -93,12 +93,12 @@ export const MAX_MOVE_KM = 150;
 export const MAX_WALK_KMH = 12;
 /** A fix this imprecise says nothing useful about distance. */
 export const MAX_ACCURACY_M = 500;
-/** Beyond this from the planned line, the route is treated as having changed. */
 
 export type TrackPoint = { lat: number; lon: number; at?: string; accuracy?: number | null };
 
 export type TrackResult = {
   counted: boolean;
+  positionCounted: boolean;
   movedKm: number;
   acceptedPoints: number;
   duplicatePoints: number;
@@ -139,205 +139,133 @@ export async function loadStops(db: Db): Promise<RouteStop[]> {
  *  3. **Precision.** A fix accurate to worse than half a kilometre is stored
  *     but never counted.
  *
- * Distance walked and position along the route stay separate numbers: the first
- * is how far the legs went, the second is where that sits on the planned line.
+ * Distance comes only from measured edges. The public trail follows recorded
+ * walking segments, without projecting positions onto a planned route.
  */
-export async function processPoints(db: Db, points: TrackPoint[], source = "manual"): Promise<TrackResult> {
-  const stops = await loadStops(db);
-  const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
-  const [existing] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
+type StoredPoint = typeof gpsPoints.$inferSelect;
 
-  const previous = existing ?? { id: 1, ...defaultJourney };
-  const startDate = config?.startDate ?? defaultRoute.startDate;
-  // Counting starts on the day the walk starts, not on the day somebody
-  // remembers to flip a switch.
-  //
-  // The tracker went live in preparation and immediately booked 28.5 km of a
-  // bus ride from Bettiah to Raxaul as walked. The fixes were spaced far enough
-  // apart that the speed guard saw a plausible walking pace between them, so
-  // nothing caught it - and a site whose whole claim is that the distance is
-  // real cannot be counting travel months before the first step.
-  //
-  // Before the start date the position is still recorded, so the map and the
-  // pin follow him around; it just does not add up to anything. On the morning
-  // of the start date it begins counting by itself, with nothing to remember.
-  const started = dayOfWalk(startDate) >= 1;
-  const live = previous.mode === "live" && started;
-  // And the walk announces itself. On the morning of the start date the mode
-  // flips on the first position of the day, so nobody has to remember to.
-  const becomesLive = started && previous.mode !== "live";
-  const previousAlong = Number(previous.routeProgressKm) || 0;
-
-  // Oldest first, so the walk is replayed in the order it happened.
-  const ordered = [...points].sort((a, b) => String(a.at ?? "").localeCompare(String(b.at ?? "")));
-
-  const rejected = { tooFast: 0, tooFar: 0, drift: 0, imprecise: 0 };
-  let duplicatePoints = 0;
-  let acceptedPoints = 0;
-  let walked = 0;
-
-  // Start measuring from the last fix actually recorded, not from the journey
-  // row, so a batch uploaded after a manual tap does not double back.
-  const [lastStored] = await db.select().from(gpsPoints).orderBy(desc(gpsPoints.recordedAt)).limit(1);
-  let cursor = lastStored
-    ? { lat: lastStored.lat, lon: lastStored.lon, at: lastStored.recordedAt }
-    : { lat: previous.lat, lon: previous.lon, at: null as string | null };
-
-  for (const point of ordered) {
-    const recordedAt = point.at ?? new Date().toISOString();
-    const moved = distanceKm(cursor.lat, cursor.lon, point.lat, point.lon);
-
-    // Average speed over the hop, when both ends carry a time.
-    let speedKmh: number | null = null;
-    if (cursor.at) {
-      const hours = (new Date(recordedAt).getTime() - new Date(cursor.at).getTime()) / 3600000;
-      if (hours > 0) speedKmh = moved / hours;
-    }
-
-    let counts = live;
-    if (counts && point.accuracy != null && point.accuracy > MAX_ACCURACY_M) { rejected.imprecise += 1; counts = false; }
-    if (counts && moved < driftThresholdKm(point.accuracy)) { rejected.drift += 1; counts = false; }
-    if (counts && moved > MAX_MOVE_KM) { rejected.tooFar += 1; counts = false; }
-    if (counts && speedKmh !== null && speedKmh > MAX_WALK_KMH) { rejected.tooFast += 1; counts = false; }
-
-    // The unique index does the deduplication: a fix already recorded at this
-    // time and place conflicts, and a conflicted row must not add distance.
-    const inserted = await db
-      .insert(gpsPoints)
-      .values({
-        id: crypto.randomUUID(),
-        recordedAt,
-        lat: point.lat,
-        lon: point.lon,
-        accuracy: point.accuracy ?? null,
-        source,
-        countedKm: counts ? moved : 0,
-        speedKmh,
-        counted: counts ? 1 : 0,
-        createdAt: new Date().toISOString(),
-      })
-      .onConflictDoNothing()
-      .returning({ id: gpsPoints.id });
-
-    if (!inserted.length) { duplicatePoints += 1; continue; }
-
-    acceptedPoints += 1;
-    if (counts) walked += moved;
-    cursor = { lat: point.lat, lon: point.lon, at: recordedAt };
-  }
-
-  const last = ordered[ordered.length - 1];
-  const counted = walked > 0;
-  const projection = projectOntoRoute(stops, last.lat, last.lon);
-  const alongKm = projection ? projection.alongKm : previousAlong;
-  const offRouteKm = projection ? projection.offRouteKm : 0;
-  const onRoute = offRouteKm <= OFF_ROUTE_KM;
-
-  // Only ever move forward along the route.
-  const progressKm = live ? Math.max(previousAlong, alongKm) : previousAlong;
-  const reached = live
-    ? stops.filter(stop => stop.km > previousAlong && stop.km <= progressKm).map(stop => stop.name)
-    : [];
-
-  const day = started ? dayOfWalk(startDate) : previous.day;
-  // Both figures are added up from the recorded points rather than carried
-  // forward, so they cannot drift. See totals() below.
-  const { distanceTotal, distanceToday } = await totals(db, startDate);
-
-  const wantsName = shouldName({
-    namedLat: previous.namedLat,
-    namedLon: previous.namedLon,
-    named: String(previous.currentPlace ?? ""),
-    lat: last.lat,
-    lon: last.lon,
-    recordedAt: last.at ?? new Date().toISOString(),
-  });
-  const place = wantsName ? await reverseGeocode(last.lat, last.lon) : null;
-  let suggestion: TrackResult["suggestion"] = null;
-
-  if (live && place && !onRoute && !alreadyOnRoute(stops, place.name, last.lat, last.lon)) {
-    suggestion = await proposeStop(db, {
-      name: place.name, state: place.state, lat: last.lat, lon: last.lon, alongKm,
-      reason: `You walked through ${place.name}, which is not on the drawn line yet. Confirm it and the route follows you.`,
-      stops,
-    });
-  }
-
-  const next = nextStopAfter(stops, progressKm);
-  const currentPlace = place ? [place.name, place.state].filter(Boolean).join(", ") : previous.currentPlace;
-  // A town name cannot answer "where is he" for a city of three million, so the
-  // corner of it is kept beside the town, along with how precise the phone
-  // claims this fix is. Both come from the last fix in the batch, which is the
-  // one the site is about to call his position.
-  const precisePlace = place ? place.precise : previous.precisePlace;
-  const accuracyM = last.accuracy ?? previous.accuracyM ?? null;
-
-  const phoneTime = last.at ? new Date(last.at) : null;
-  const phoneUpdatedAt = phoneTime && Number.isFinite(phoneTime.getTime()) && phoneTime.getTime() <= Date.now() + 5 * 60000
-    ? phoneTime.toISOString()
-    : new Date().toISOString();
-
-  const nextJourney = {
-    ...previous,
-    id: 1,
-    lat: last.lat,
-    lon: last.lon,
-    day,
-    distanceTotal: Math.min(10000, Math.max(0, distanceTotal)),
-    distanceToday: Math.min(100, Math.max(0, distanceToday)),
-    routeProgressKm: Math.min(10000, Math.max(0, progressKm)),
-    offRouteKm: Math.min(2000, Math.max(0, offRouteKm)),
-    currentPlace,
-    precisePlace,
-    // Only moves when a name was actually fetched, so the next fix measures
-    // its distance from there rather than from itself.
-    ...(place ? { namedLat: last.lat, namedLon: last.lon } : {}),
-    accuracyM,
-    // The walk announces itself on the morning of the start date rather than
-    // waiting for somebody to remember a dropdown.
-    ...(becomesLive ? { mode: "live" as const } : {}),
-    // This is the time of the GPS fix, not the time a delayed batch happened
-    // to reach the server. The age shown on the site therefore describes the
-    // evidence itself.
-    updatedAt: phoneUpdatedAt,
-  };
-
-  await db.insert(journey).values(nextJourney).onConflictDoUpdate({ target: journey.id, set: nextJourney });
-
-  return {
-    counted, movedKm: Math.round(walked * 100) / 100,
-    acceptedPoints, duplicatePoints, rejected,
-    alongKm: progressKm, offRouteKm, onRoute, reached,
-    place: currentPlace, named: Boolean(place), suggestion,
-    reason: explain({ live, walked, acceptedPoints, duplicatePoints, rejected, onRoute, offRouteKm, reached, next: next?.name, suggestion }),
-    journey: nextJourney,
-  };
+/** Classify the measured edge between two real, chronological fixes. */
+export function measuredEdge(before: StoredPoint | null, point: StoredPoint, opensAt: string) {
+  const empty = { counted: 0, countedKm: 0, speedKmh: null as number | null, rejection: "" };
+  if (!before || before.recordedAt < opensAt || point.recordedAt < opensAt) return empty;
+  if ((before.accuracy ?? 0) > MAX_ACCURACY_M || (point.accuracy ?? 0) > MAX_ACCURACY_M) return { ...empty, rejection: "imprecise" };
+  const hours = (Date.parse(point.recordedAt) - Date.parse(before.recordedAt)) / 3600000;
+  // Equal or reversed times cannot establish a walking speed.
+  if (!Number.isFinite(hours) || hours <= 0) return empty;
+  const moved = distanceKm(before.lat, before.lon, point.lat, point.lon);
+  const speedKmh = moved / hours;
+  if (moved > MAX_MOVE_KM) return { ...empty, speedKmh, rejection: "tooFar" };
+  if (speedKmh > MAX_WALK_KMH) return { ...empty, speedKmh, rejection: "tooFast" };
+  if (moved < driftThresholdKm(Math.max(before.accuracy ?? 0, point.accuracy ?? 0))) return { ...empty, speedKmh, rejection: "drift" };
+  return { counted: 1, countedKm: moved, speedKmh, rejection: "" };
 }
 
-function explain(state: {
-  live: boolean; walked: number; acceptedPoints: number; duplicatePoints: number;
-  rejected: TrackResult["rejected"]; onRoute: boolean; offRouteKm: number;
-  reached: string[]; next?: string; suggestion: TrackResult["suggestion"];
-}) {
-  if (!state.live) return "Position saved. Distance starts counting on the first day of the walk.";
+export async function processPoints(db: Db, points: TrackPoint[], source = "manual"): Promise<TrackResult> {
+  const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
+  const [existing] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
+  const previous = existing ?? { id: 1, ...defaultJourney };
+  const startDate = config?.startDate ?? defaultRoute.startDate;
+  const opensAt = walkOpensAt(startDate);
+  const receivedAt = new Date().toISOString();
+  const ordered = points.map(readPoint).filter((point): point is TrackPoint => point !== null)
+    .map(point => ({ ...point, at: point.at ?? receivedAt }))
+    .sort((a, b) => a.at.localeCompare(b.at));
+  if (!ordered.length) throw new Error("No valid GPS positions were supplied.");
 
-  const parts: string[] = [];
-  if (state.duplicatePoints && !state.acceptedPoints) {
-    return `Already recorded — all ${state.duplicatePoints} point${state.duplicatePoints === 1 ? "" : "s"} were uploaded before, so nothing was counted twice.`;
+  const rejected = { tooFast: 0, tooFar: 0, drift: 0, imprecise: 0 };
+  const insertedIds = new Set<string>();
+  // Small inserts respect D1's bound-parameter limit. The unique index owns
+  // deduplication, including simultaneous retries from two requests.
+  for (let offset = 0; offset < ordered.length; offset += 10) {
+    const inserted = await db.insert(gpsPoints).values(ordered.slice(offset, offset + 10).map(point => ({
+      id: crypto.randomUUID(), recordedAt: point.at, lat: point.lat, lon: point.lon,
+      accuracy: point.accuracy ?? null, source, createdAt: receivedAt,
+    }))).onConflictDoNothing().returning({ id: gpsPoints.id });
+    for (const row of inserted) insertedIds.add(row.id);
   }
-  if (state.walked > 0) parts.push(`Added ${(Math.round(state.walked * 10) / 10).toLocaleString("en-IN")} km.`);
-  if (state.duplicatePoints) parts.push(`Skipped ${state.duplicatePoints} already recorded.`);
-  if (state.rejected.tooFast) parts.push(`${state.rejected.tooFast} point${state.rejected.tooFast === 1 ? "" : "s"} moved too fast to have been walked — not counted.`);
-  if (state.rejected.tooFar) parts.push("A jump too far to have been walked was not counted.");
-  if (state.rejected.imprecise) parts.push(`${state.rejected.imprecise} fix${state.rejected.imprecise === 1 ? " was" : "es were"} too imprecise to count.`);
-  if (!parts.length && state.rejected.drift) parts.push("You have barely moved, so nothing was added.");
 
-  if (state.reached.length) parts.push(`Reached ${state.reached.join(", ")}.`);
-  if (state.suggestion) parts.push(`New place found: ${state.suggestion.name}. Confirm it below to add it to the route.`);
-  else if (!state.onRoute) parts.push(`The drawn line is about ${Math.round(state.offRouteKm)} km from here; it will follow you.`);
-  if (state.next) parts.push(`Next: ${state.next}.`);
+  let walked = 0;
+  if (insertedIds.size) {
+    // An old upload changes the edge into the new point AND the edge into its
+    // successor. Recalculate that interval, instead of joining history to the
+    // latest position or counting the same section twice.
+    const firstAt = ordered[0].at, lastAt = ordered.at(-1)!.at;
+    const [before] = await db.select().from(gpsPoints).where(lt(gpsPoints.recordedAt, firstAt))
+      .orderBy(desc(gpsPoints.recordedAt), desc(gpsPoints.id)).limit(1);
+    const middle = await db.select().from(gpsPoints)
+      .where(and(gte(gpsPoints.recordedAt, firstAt), lte(gpsPoints.recordedAt, lastAt)))
+      .orderBy(asc(gpsPoints.recordedAt), asc(gpsPoints.id));
+    const [after] = await db.select().from(gpsPoints).where(gt(gpsPoints.recordedAt, lastAt))
+      .orderBy(asc(gpsPoints.recordedAt), asc(gpsPoints.id)).limit(1);
+    let cursor: StoredPoint | null = before ?? null;
+    const updates = [];
+    for (const point of [...middle, ...(after ? [after] : [])]) {
+      const edge = measuredEdge(cursor, point, opensAt);
+      if (insertedIds.has(point.id)) {
+        walked += edge.countedKm;
+        if (edge.rejection in rejected) rejected[edge.rejection as keyof typeof rejected] += 1;
+      }
+      // A concurrent insert can change the predecessor after this read. Do
+      // not overwrite the newer edge with a calculation from an older view.
+      const predecessor = sql`coalesce((select id from gps_points as p
+        where p.recorded_at < ${point.recordedAt}
+           or (p.recorded_at = ${point.recordedAt} and p.id < ${point.id})
+        order by p.recorded_at desc, p.id desc limit 1), '') = ${cursor?.id ?? ""}`;
+      updates.push(db.update(gpsPoints).set({ counted: edge.counted, countedKm: edge.countedKm, speedKmh: edge.speedKmh })
+        .where(and(eq(gpsPoints.id, point.id), predecessor)));
+      cursor = point;
+    }
+    for (let offset = 0; offset < updates.length; offset += 50) {
+      const batch = updates.slice(offset, offset + 50);
+      if (batch.length) await db.batch(batch as [typeof batch[number], ...typeof batch[number][]]);
+    }
+  }
 
-  return parts.join(" ") || "Position updated.";
+  const distances = await totals(db, startDate);
+  const [latest] = await db.select().from(gpsPoints)
+    .where(or(isNull(gpsPoints.accuracy), lte(gpsPoints.accuracy, MAX_ACCURACY_M)))
+    .orderBy(desc(gpsPoints.recordedAt), desc(gpsPoints.id)).limit(1);
+  const day = dayOfWalk(startDate);
+  const live = day >= 1;
+  const movesPosition = Boolean(latest && insertedIds.has(latest.id)
+    && (!previous.updatedAt || Date.parse(latest.recordedAt) >= Date.parse(previous.updatedAt)));
+  const wantsName = movesPosition && latest && shouldName({
+    namedLat: previous.namedLat, namedLon: previous.namedLon,
+    named: String(previous.currentPlace ?? ""), lat: latest.lat, lon: latest.lon,
+    recordedAt: latest.recordedAt,
+  });
+  const place = wantsName && latest ? await reverseGeocode(latest.lat, latest.lon) : null;
+  const currentPlace = place ? [place.name, place.state].filter(Boolean).join(", ")
+    : wantsName ? "GPS position — place name unavailable" : previous.currentPlace;
+  const patch = {
+    day, mode: live ? "live" : "preparation",
+    ...distances,
+    // Kept for old clients. Neither figure projects the walk onto a plan.
+    routeProgressKm: distances.distanceTotal, offRouteKm: 0,
+    ...(movesPosition && latest ? {
+      lat: latest.lat, lon: latest.lon, accuracyM: latest.accuracy,
+      updatedAt: latest.recordedAt, currentPlace,
+      precisePlace: place?.precise ?? (wantsName ? "" : previous.precisePlace),
+      ...(place ? { namedLat: latest.lat, namedLon: latest.lon } : {}),
+    } : {}),
+  };
+  await db.insert(journey).values({ ...previous, updatedAt: previous.updatedAt ?? "", ...patch }).onConflictDoUpdate({
+    target: journey.id, set: patch,
+    ...(movesPosition && latest ? { setWhere: sql`${journey.updatedAt} <= ${latest.recordedAt}` } : {}),
+  });
+  const [saved] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
+  const duplicatePoints = ordered.length - insertedIds.size;
+  const reason = !live ? "Position saved. Distance starts counting on the first day of the walk."
+    : !insertedIds.size ? `Already recorded — skipped ${duplicatePoints} duplicate positions.`
+    : walked > 0 ? `Recorded ${Math.round(walked * 100) / 100} km of GPS-checked walking.`
+    : "Position saved. These fixes did not establish additional walking distance.";
+  return {
+    counted: walked > 0, positionCounted: Boolean(movesPosition && latest?.counted),
+    movedKm: Math.round(walked * 100) / 100,
+    acceptedPoints: insertedIds.size, duplicatePoints, rejected,
+    alongKm: distances.distanceTotal, offRouteKm: 0, onRoute: true, reached: [],
+    place: saved.currentPlace, named: Boolean(place), suggestion: null, reason, journey: saved,
+  };
 }
 
 /**

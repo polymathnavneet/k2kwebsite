@@ -1,15 +1,23 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { journey } from "@/db/schema";
-import { defaultJourney } from "@/lib/defaults";
+import { journey, routeConfig } from "@/db/schema";
+import { defaultJourney, defaultRoute } from "@/lib/defaults";
 import seed from "@/data/journey.json";
 import { mirrorJourney } from "@/lib/mirror";
-import { clamp, clean, isAdmin } from "@/lib/server";
+import { clean, isAdmin } from "@/lib/server";
+
+import { readObject } from "@/lib/http";
+import { totals } from "@/lib/tracking";
+import { dayOfWalk } from "@/lib/geo";
 
 export async function GET() {
   const db = getDb();
   const [row] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
-  if (row) return Response.json({ ...row, id: undefined });
+  const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
+  const startDate = config?.startDate ?? defaultRoute.startDate;
+  const day = dayOfWalk(startDate);
+  const distances = await totals(db, startDate);
+  if (row) return Response.json({ ...row, ...distances, day, mode: day > 0 ? "live" : "preparation", id: undefined }, { headers: { "cache-control": "no-store" } });
 
   // A database that has never been written to is not the same as a walk that
   // has not started. Moving the site to new hosting left exactly that: an empty
@@ -20,37 +28,29 @@ export async function GET() {
   // survives the database being replaced, rather than needing a phone with
   // signal to re-send it.
   await db.insert(journey).values({ id: 1, ...seed }).onConflictDoNothing();
-  return Response.json(seed ?? defaultJourney);
+  return Response.json({ ...seed, ...distances, day, mode: day > 0 ? "live" : "preparation" }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function POST(request: Request) {
   if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const body = (await request.json()) as Record<string, unknown>;
-  const data = {
-    id: 1,
-    mode: body.mode === "live" ? "live" : "preparation",
-    status: clean(body.status, 40) || "Walking",
-    day: Math.round(clamp(body.day, 0, 365)),
-    distanceToday: clamp(body.distanceToday, 0, 100),
-    distanceTotal: clamp(body.distanceTotal, 0, 10000),
-    stepsToday: Math.round(clamp(body.stepsToday, 0, 200000)),
-    walkingMinutes: Math.round(clamp(body.walkingMinutes, 0, 1440)),
-    currentPlace: clean(body.currentPlace, 100),
-    lat: clamp(body.lat, -90, 90, defaultJourney.lat),
-    lon: clamp(body.lon, -180, 180, defaultJourney.lon),
-    temperature: body.temperature === "" || body.temperature == null ? null : clamp(body.temperature, -50, 60),
-    altitude: body.altitude === "" || body.altitude == null ? null : clamp(body.altitude, -500, 9000),
-    battery: body.battery === "" || body.battery == null ? null : Math.round(clamp(body.battery, 0, 100)),
-    connectivity: clean(body.connectivity, 50),
-    lastSleep: clean(body.lastSleep, 100),
-    latestTitle: clean(body.latestTitle, 140),
-    latestText: clean(body.latestText, 500),
-    latestUrl: clean(body.latestUrl, 240) || "/journal",
-    sponsorName: clean(body.sponsorName, 100),
-    updatedAt: new Date().toISOString(),
-  };
+  let body: Record<string, unknown>;
+  try { body = await readObject(request); }
+  catch { return Response.json({ error: "Invalid request" }, { status: 400 }); }
+
+  // Saving a note must not overwrite a newer phone report with the admin
+  // form's old copy. Only editable narrative fields belong to this endpoint.
+  const limits = { status: 40, lastSleep: 100, latestTitle: 140, latestText: 500, latestUrl: 240, sponsorName: 100 } as const;
+  const patch: Record<string, string> = {};
+  for (const [key, max] of Object.entries(limits)) {
+    if (Object.hasOwn(body, key)) patch[key] = clean(body[key], max);
+  }
+  if (patch.latestUrl && !/^\/(?!\/)|^https?:\/\//i.test(patch.latestUrl)) {
+    return Response.json({ error: "Use a website URL or a link within this site." }, { status: 400 });
+  }
+  if (!Object.keys(patch).length) return Response.json({ error: "No editable status or notes were supplied. Positions and distances come from GPS." }, { status: 400 });
   const db = getDb();
-  await db.insert(journey).values(data).onConflictDoUpdate({ target: journey.id, set: data });
+  await db.insert(journey).values({ id: 1, ...defaultJourney, updatedAt: "", ...patch }).onConflictDoUpdate({ target: journey.id, set: patch });
+  const [saved] = await db.select().from(journey).where(eq(journey.id, 1)).limit(1);
   await mirrorJourney(db);
-  return Response.json({ ok: true, journey: data });
+  return Response.json({ ok: true, journey: saved });
 }

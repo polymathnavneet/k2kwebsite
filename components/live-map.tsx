@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { trailSegments } from "@/lib/trail";
 import { RouteMap } from "./route-map";
 import type { GpsTrailPoint, Journey, RouteStop } from "@/lib/types";
 
@@ -136,13 +137,12 @@ export function LiveMap({ stops, journey, trail = [], compact = false, active = 
     if (!ready || !L || !map || !layer) return;
 
     layer.clearLayers();
-    const actual = active
-      ? trail.filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon)).map(point => [point.lat, point.lon] as [number, number])
-      : [];
+    const segments = active ? trailSegments(trail).map(segment => segment.map(point => [point.lat, point.lon] as [number, number])) : [];
+    const actual = segments.flat();
 
     // There is deliberately no planned polyline. The only line is where the
     // accepted GPS fixes say Navneet actually walked.
-    if (actual.length > 1) L.polyline(actual, { color: "#e54a2a", weight: 5, opacity: .95 }).addTo(layer);
+    for (const segment of segments) if (segment.length > 1) L.polyline(segment, { color: "#e54a2a", weight: 5, opacity: .95 }).addTo(layer);
     if (actual.length) {
       const first = L.circleMarker(actual[0], { radius: 5, color: "#151716", weight: 2, fillColor: "#e54a2a", fillOpacity: 1 });
       first.addTo(layer);

@@ -32,10 +32,11 @@ export async function recordGpsPlace(input: {
     INSERT INTO gps_places (name, state, lat, lon, first_seen, last_seen, sightings, distance_km)
     VALUES (?, ?, ?, ?, ?, ?, 1, ?)
     ON CONFLICT(name, state) DO UPDATE SET
-      lat = excluded.lat,
-      lon = excluded.lon,
-      last_seen = excluded.last_seen,
+      lat = CASE WHEN excluded.last_seen >= gps_places.last_seen THEN excluded.lat ELSE gps_places.lat END,
+      lon = CASE WHEN excluded.last_seen >= gps_places.last_seen THEN excluded.lon ELSE gps_places.lon END,
+      first_seen = MIN(gps_places.first_seen, excluded.first_seen),
+      last_seen = MAX(gps_places.last_seen, excluded.last_seen),
       sightings = gps_places.sightings + 1,
-      distance_km = excluded.distance_km
+      distance_km = CASE WHEN excluded.first_seen < gps_places.first_seen THEN excluded.distance_km ELSE gps_places.distance_km END
   `).bind(name, state, input.lat, input.lon, at, at, distance).run();
 }

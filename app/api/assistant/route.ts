@@ -1,3 +1,4 @@
+import { readObject } from "@/lib/http";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { journalEntries, journey, media, messages } from "@/db/schema";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
   let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = await readObject(request);
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }

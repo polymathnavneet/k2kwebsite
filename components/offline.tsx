@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { pending, watchOutbox, type Outgoing } from "@/lib/outbox";
+import { pending, watchOutbox, retrySaved, discardSaved, type Outgoing } from "@/lib/outbox";
 
 /**
  * Registers the service worker and shows a single honest line when the phone
@@ -48,13 +48,23 @@ export function Offline() {
 
   // Name what is waiting rather than counting it, so nothing feels lost.
   const what = rows.slice(0, 3).map(row => row.label).join(", ");
+  const blocked = rows.filter(row => row.state === "needs-attention");
   return (
     <div className="offline-bar" role="status">
-      {online
+      {blocked.length ? `${blocked.length} saved submission${blocked.length === 1 ? " needs" : "s need"} attention. Your text is still on this phone.` : online
         ? `Sending ${waiting === 1 ? "" : `${waiting} things: `}${what}${rows.length > 3 ? "…" : ""}`
         : waiting
           ? `No signal. ${waiting === 1 ? "One thing is" : `${waiting} things are`} saved on this phone and will send by themselves: ${what}${rows.length > 3 ? "…" : ""}`
-          : "No signal. You can still read the site, and anything you write is saved on this phone and sent when the signal returns."}
+          : "No signal. Previously opened pages may still be available. Keep the site open when you reconnect to send saved submissions."}
+      {blocked.map(row => <details key={row.id}>
+        <summary>{row.label}</summary>
+        <p>{row.lastError}</p>
+        <p style={{ whiteSpace: "pre-wrap" }}>{String(row.payload.message ?? row.payload.body ?? "")}</p>
+        <button type="button" onClick={() => { retrySaved(row.id).catch(() => {}); }}>Try again</button>{" "}
+        <button type="button" onClick={() => {
+          if (confirm("Remove this saved submission from this phone?")) discardSaved(row.id).catch(() => {});
+        }}>Remove saved submission</button>
+      </details>)}
     </div>
   );
 }

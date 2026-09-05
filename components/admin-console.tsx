@@ -113,12 +113,13 @@ export function AdminConsole() {
       await request("/api/gps", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ lat: latitude, lon: longitude, accuracy, source: "browser" }),
+        body: JSON.stringify({ lat: latitude, lon: longitude, accuracy, at: new Date(spot.timestamp).toISOString(), source: "browser" }),
       });
       say(`Sent: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)} m).`);
       await loadAll();
     } catch (error) {
-      const message = error instanceof GeolocationPositionError
+      const locationError = error && typeof error === "object" && "code" in error;
+      const message = locationError
         ? (error.code === 1 ? "Location permission was refused for this site." : "This phone could not get a fix.")
         : error instanceof Error ? error.message : "Could not send the position.";
       say(message);

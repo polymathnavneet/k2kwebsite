@@ -12,6 +12,8 @@ export type GpsTrailPoint = {
   lat: number;
   lon: number;
   countedKm?: number;
+  /** Break the line whenever the intervening movement was not verified. */
+  segment?: number;
 };
 
 export type GpsTrailPlace = {
