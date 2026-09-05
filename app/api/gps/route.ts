@@ -8,6 +8,8 @@ import { isAdmin, isTracker } from "@/lib/server";
 import { processPoints, walkOpensAt } from "@/lib/tracking";
 import { describeKey, noteAttempt } from "@/lib/tracker-log";
 import type { GpsTrailPlace, GpsTrailPoint } from "@/lib/types";
+import { readObject } from "@/lib/http";
+import { readPoint } from "@/lib/track-input";
 
 const MAX_PUBLIC_TRAIL_POINTS = 1800;
 
@@ -18,27 +20,35 @@ export async function GET() {
   const from = walkOpensAt(config?.startDate ?? defaultRoute.startDate);
   const runtime = env as unknown as { DB: D1Database };
   const query = `
-    WITH walked AS (
-      SELECT recorded_at AS recordedAt, lat, lon, counted_km AS countedKm
+    WITH ordered AS (
+      SELECT recorded_at AS recordedAt, lat, lon, counted_km AS countedKm, counted,
+             LAG(recorded_at) OVER w AS previousAt,
+             LAG(lat) OVER w AS previousLat,
+             LAG(lon) OVER w AS previousLon,
+             LAG(counted) OVER w AS previousCounted,
+             SUM(CASE WHEN counted = 0 THEN 1 ELSE 0 END) OVER w AS segment
       FROM gps_points
-      WHERE counted = 1 AND recorded_at >= ?
+      WHERE recorded_at >= ?
+      WINDOW w AS (ORDER BY recorded_at, id)
+    ), endpoints AS (
+      SELECT recordedAt, lat, lon, countedKm, segment
+      FROM ordered WHERE counted = 1
+      UNION ALL
+      SELECT previousAt, previousLat, previousLon, 0, segment
+      FROM ordered WHERE counted = 1 AND previousAt IS NOT NULL
+        AND coalesce(previousCounted, 0) = 0
     ), numbered AS (
-      SELECT recordedAt, lat, lon, countedKm,
-             ROW_NUMBER() OVER (ORDER BY recordedAt) AS rn,
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY segment ORDER BY recordedAt) AS rn,
+             COUNT(*) OVER (PARTITION BY segment) AS segmentTotal,
              COUNT(*) OVER () AS total
-      FROM walked
+      FROM endpoints
     )
-    SELECT recordedAt, lat, lon, countedKm
+    SELECT recordedAt, lat, lon, countedKm, segment
     FROM numbered
     WHERE total <= ${MAX_PUBLIC_TRAIL_POINTS}
-       OR rn = 1
-       OR rn = total
-       OR rn % CASE
-            WHEN total > ${MAX_PUBLIC_TRAIL_POINTS}
-              THEN CAST((total + ${MAX_PUBLIC_TRAIL_POINTS - 1}) / ${MAX_PUBLIC_TRAIL_POINTS} AS INTEGER)
-            ELSE 1
-          END = 0
-    ORDER BY recordedAt
+       OR rn = 1 OR rn = segmentTotal
+       OR rn % MAX(1, CAST((total + ${MAX_PUBLIC_TRAIL_POINTS - 1}) / ${MAX_PUBLIC_TRAIL_POINTS} AS INTEGER)) = 0
+    ORDER BY recordedAt, segment
   `;
 
   const [trailResult, placesResult] = await Promise.all([
@@ -71,25 +81,24 @@ export async function POST(request: Request) {
 
   let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = await readObject(request);
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const lat = Number(body.lat);
-  const lon = Number(body.lon);
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
+  const point = readPoint(body);
+  if (!point) {
     return Response.json({ error: "That does not look like a valid position." }, { status: 400 });
   }
 
   const db = getDb();
-  const result = await processPoints(db, [{ lat, lon }]);
+  const result = await processPoints(db, [point], "browser");
   // Same rule as /api/track: a position that was not freshly named is carrying
   // the previous name forward, and must not be filed as a new sighting of it.
-  if (result.named) await recordGpsPlace({
+  if (result.named && result.positionCounted) await recordGpsPlace({
     place: result.place,
-    lat,
-    lon,
+    lat: Number(result.journey.lat),
+    lon: Number(result.journey.lon),
     distanceKm: Number(result.journey.distanceTotal ?? 0),
     recordedAt: String(result.journey.updatedAt ?? ""),
     live: result.journey.mode === "live",

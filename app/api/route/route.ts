@@ -1,3 +1,5 @@
+import { readObject, validDay } from "@/lib/http";
+import { readNumber, readPoint } from "@/lib/track-input";
 import { asc, eq } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
@@ -14,14 +16,14 @@ export async function GET() {
     .select({ name: routeStops.name, state: routeStops.state, lat: routeStops.lat, lon: routeStops.lon, km: routeStops.km, note: routeStops.note })
     .from(routeStops)
     .orderBy(asc(routeStops.sortOrder));
-  return Response.json({ ...config, stops });
+  return Response.json({ ...config, stops: stops.length ? stops : defaultRoute.stops });
 }
 
 export async function POST(request: Request) {
   if (!isAdmin(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
   let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = await readObject(request);
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
@@ -32,8 +34,12 @@ export async function POST(request: Request) {
   try {
     const stops = body.stops.map((item, index) => {
       const stop = item as Record<string, unknown>;
-      const km = Math.round(clamp(stop.km, 0, 10000));
-      if (km < previous) throw new Error("Route kilometres must increase.");
+      const position = readPoint(stop);
+      if (!position) throw new Error("Every stop needs valid latitude and longitude.");
+      const distance = readNumber(stop.km);
+      if (distance === null || distance < 0 || distance > 10000) throw new Error("Every stop needs a valid distance.");
+      const km = Math.round(distance);
+      if (km <= previous) throw new Error("Route kilometres must increase.");
       previous = km;
       const name = clean(stop.name, 80);
       if (!name) throw new Error("Every stop needs a city name.");
@@ -41,13 +47,14 @@ export async function POST(request: Request) {
         sortOrder: index,
         name,
         state: clean(stop.state, 80),
-        lat: clamp(stop.lat, -90, 90),
-        lon: clamp(stop.lon, -180, 180),
+        lat: position.lat,
+        lon: position.lon,
         km,
         note: clean(stop.note, 260),
       };
     });
-    const startDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.startDate)) ? String(body.startDate) : defaultRoute.startDate;
+    if (body.startDate != null && !validDay(body.startDate)) throw new Error("Use a real calendar date for the first step.");
+    const startDate = body.startDate == null ? defaultRoute.startDate : String(body.startDate);
     const pace = clamp(body.paceKmPerDay, 5, 60, 25);
     const now = new Date().toISOString();
     const runtime = env as unknown as { DB: D1Database };

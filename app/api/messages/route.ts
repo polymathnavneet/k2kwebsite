@@ -1,9 +1,10 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { messages } from "@/db/schema";
+import { messages, siteSettings } from "@/db/schema";
 import { mirrorMessages } from "@/lib/mirror";
 import { clean, isAdmin, isAssistant, publicText } from "@/lib/server";
 import seed from "@/data/messages.json";
+import { readObject } from "@/lib/http";
 
 export async function GET(request: Request) {
   const db = getDb();
@@ -18,8 +19,12 @@ export async function GET(request: Request) {
   // back from the repository file - the same file the mirror writes, which by
   // design carries no contact details.
   const [any] = await db.select({ id: messages.id }).from(messages).limit(1);
-  if (!any && seed.messages.length) {
-    await db.insert(messages).values(seed.messages.map(row => ({ ...row, contact: "" }))).onConflictDoNothing();
+  const [seeded] = await db.select().from(siteSettings).where(eq(siteSettings.key, "messages-seeded")).limit(1);
+  if (!seeded) {
+    await db.batch([
+      db.insert(siteSettings).values({ key: "messages-seeded", value: "1" }).onConflictDoNothing(),
+      ...(!any ? seed.messages.map(row => db.insert(messages).values({ ...row, contact: "" }).onConflictDoNothing()) : []),
+    ]);
   }
 
   const rows = await db
@@ -50,7 +55,7 @@ export async function POST(request: Request) {
   const db = getDb();
   let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = await readObject(request);
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
@@ -111,6 +116,7 @@ export async function POST(request: Request) {
       // detail. Deleting is for the other case - a message that should not be
       // held at all - so the row goes, contact included, and does not come back.
       if (!admin) return Response.json({ error: "That needs the admin passcode." }, { status: 403 });
+      await db.insert(siteSettings).values({ key: "messages-seeded", value: "1" }).onConflictDoNothing();
       await db.delete(messages).where(eq(messages.id, id));
     } else {
       return Response.json({ error: "Unknown action" }, { status: 400 });
@@ -143,10 +149,16 @@ export async function POST(request: Request) {
   // of a second copy of somebody's message.
   const supplied = clean(body.clientId, 80);
   const id = /^[A-Za-z0-9_-]{8,80}$/.test(supplied) ? supplied : crypto.randomUUID();
-  const [seen] = await db.select({ id: messages.id }).from(messages).where(eq(messages.id, id)).limit(1);
-  if (seen) return Response.json({ ok: true, id, duplicate: true, public: true });
   const createdAt = new Date().toISOString();
-  await db.insert(messages).values({ id, type, name, contact, place, message, status, createdAt });
+  const inserted = await db.insert(messages).values({ id, type, name, contact, place, message, status, createdAt })
+    .onConflictDoNothing().returning({ id: messages.id });
+  if (!inserted.length) {
+    const [seen] = await db.select().from(messages).where(eq(messages.id, id)).limit(1);
+    if (!seen || seen.contact !== contact || seen.message !== message || seen.type !== type) {
+      return Response.json({ error: "That submission ID is already in use. Please try again." }, { status: 409 });
+    }
+    return Response.json({ ok: true, id, duplicate: true, public: seen.status === "public" });
+  }
 
   if (status === "public") await mirrorMessages(db);
 

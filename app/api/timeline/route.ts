@@ -1,3 +1,5 @@
+import { readObject, validDay } from "@/lib/http";
+import { defaultRoute } from "@/lib/defaults";
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { routeConfig, timelineSteps } from "@/db/schema";
@@ -15,7 +17,6 @@ import seed from "@/data/timeline.json";
  *         and the whole site follows.
  */
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 type Step = { id: string; day: string; title: string; detail: string; sortOrder: number; isFinal: number };
 
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
   let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = await readObject(request);
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
@@ -61,8 +62,9 @@ export async function POST(request: Request) {
 
   const rows: Step[] = [];
   for (const [index, item] of (body.steps as Record<string, unknown>[]).entries()) {
+    if (!item || typeof item !== "object") return Response.json({ error: `Step ${index + 1} is invalid.` }, { status: 400 });
     const day = clean(item.date ?? item.day, 10);
-    if (!DAY.test(day)) return Response.json({ error: `Step ${index + 1}: the date must look like 2026-12-17.` }, { status: 400 });
+    if (!validDay(day)) return Response.json({ error: `Step ${index + 1} needs a real calendar date, such as 2026-12-17.` }, { status: 400 });
     const title = clean(item.title, 120);
     if (!title) return Response.json({ error: `Step ${index + 1} needs a title.` }, { status: 400 });
     rows.push({ id: crypto.randomUUID(), day, title, detail: clean(item.detail, 400), sortOrder: index, isFinal: item.final ? 1 : 0 });
@@ -78,14 +80,13 @@ export async function POST(request: Request) {
   last.isFinal = 1;
 
   const db = getDb();
-  await db.delete(timelineSteps);
-  await db.insert(timelineSteps).values(rows);
-
-  // The whole point: the last step is the start date, so the route follows it.
   const [config] = await db.select().from(routeConfig).where(eq(routeConfig.id, 1)).limit(1);
-  if (config && config.startDate !== last.day) {
-    await db.update(routeConfig).set({ startDate: last.day, updatedAt: new Date().toISOString() }).where(eq(routeConfig.id, 1));
-  }
+  await db.batch([
+    db.delete(timelineSteps),
+    ...rows.map(row => db.insert(timelineSteps).values(row)),
+    db.insert(routeConfig).values({ id: 1, title: defaultRoute.title, startDate: last.day, paceKmPerDay: defaultRoute.paceKmPerDay, totalDistance: defaultRoute.totalDistance })
+      .onConflictDoUpdate({ target: routeConfig.id, set: { startDate: last.day, updatedAt: new Date().toISOString() } }),
+  ]);
 
   return Response.json({ ok: true, steps: shape(rows), startDate: last.day, movedRoute: Boolean(config) && config.startDate !== last.day });
 }

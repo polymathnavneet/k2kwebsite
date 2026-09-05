@@ -1,5 +1,6 @@
 "use client";
 
+import { trailSegments } from "@/lib/trail";
 import type { GpsTrailPoint, Journey, RouteStop } from "@/lib/types";
 
 const project = (lat: number, lon: number) => ({
@@ -23,14 +24,14 @@ const trailPoints = (trail: GpsTrailPoint[]) => trail
  */
 export function RouteMap({ stops: _stops, journey, trail = [], compact = false, active = false }: { stops: RouteStop[]; journey: Journey; trail?: GpsTrailPoint[]; compact?: boolean; active?: boolean }) {
   const current = project(journey.lat, journey.lon);
-  const actual = active ? trailPoints(trail) : "";
+  const actual = active ? trailSegments(trail).map(trailPoints) : [];
   const first = active && trail.length ? project(trail[0].lat, trail[0].lon) : null;
 
   return (
     <div className={compact ? "route-map compact" : "route-map"}>
       <svg viewBox="0 0 420 720" role="img" aria-label="GPS trail actually walked by Navneet">
         <path className="map-grid-lines" d="M35 100H390M35 200H390M35 300H390M35 400H390M35 500H390M35 600H390M90 45V675M180 45V675M270 45V675M360 45V675" />
-        {actual && <polyline className="walked-line" points={actual} />}
+        {actual.map((points, index) => <polyline key={index} className="walked-line" points={points} />)}
         {first && <circle className="route-dot reached" cx={first.x} cy={first.y} r="5" />}
         <circle className="current-halo" cx={current.x} cy={current.y} r="14" />
         <circle className="current-dot" cx={current.x} cy={current.y} r="7" />
