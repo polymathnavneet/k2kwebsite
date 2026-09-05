@@ -13,6 +13,8 @@ import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/embed";
 import { lastHeard, predictNext } from "@/lib/position";
 import { walkDay } from "@/lib/time";
 import { Assistant } from "./assistant";
+import { startLivePoll } from "@/lib/live-poll";
+import { mergeLiveTelemetry } from "@/lib/live-telemetry";
 
 type AdminMessage = PublicMessage & { contact: string };
 type BookRow = { id: string; name: string; contact: string; city: string; format: string; note: string; createdAt: string };
@@ -77,6 +79,15 @@ export function AdminConsole() {
     plainUrl: string;
     configured: boolean;
   } | null>(null);
+
+  useEffect(() => {
+    if (!connected) return;
+    const location = startLivePoll<Journey>("/api/journey", data => {
+      setJourney(current => mergeLiveTelemetry(current, data));
+    });
+    const health = startLivePoll<NonNullable<typeof tracker>>("/api/tracker", setTracker, { "x-admin-token": token.trim() });
+    return () => { location.stop(); health.stop(); };
+  }, [connected, token]);
 
   async function request<T>(url: string, options: RequestInit = {}) {
     const cleanToken = token.trim();
